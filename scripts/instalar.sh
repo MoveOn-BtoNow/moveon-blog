@@ -155,5 +155,11 @@ $SUDO systemctl is-enabled --quiet moveon.service; $SUDO systemctl is-active --q
 $SUDO docker compose ps --status running | grep -q banco
 $SUDO docker compose ps --status running | grep -q redis
 if $PROXY_GERENCIADO; then $SUDO nginx -t; fi
-curl -fsS --max-time 10 "$URL_PLATAFORMA" >/dev/null
+# Valida o origin diretamente; o Cloudflare pode responder com desafio 403
+# para clientes de terminal mesmo quando o portal está saudável.
+if $HTTPS && ! $AMBIENTE_LOCAL; then
+  curl -fsS --max-time 15 --resolve "$DOMINIO:443:127.0.0.1" "https://$DOMINIO" >/dev/null
+else
+  curl -fsS --max-time 15 "$URL_PLATAFORMA" >/dev/null
+fi
 echo "MOVE.ON instalado/atualizado com sucesso em $URL_PLATAFORMA"
