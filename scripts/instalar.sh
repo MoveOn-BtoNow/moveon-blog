@@ -31,6 +31,16 @@ DOMINIO="${URL_PLATAFORMA#*://}"; DOMINIO="${DOMINIO%%:*}"
 HTTPS=false; [[ "$URL_PLATAFORMA" == https://* ]] && HTTPS=true
 AMBIENTE_LOCAL=false; [[ "$DOMINIO" == "localhost" || "$DOMINIO" == "127.0.0.1" ]] && AMBIENTE_LOCAL=true
 EMAIL_CERTIFICADO="${2:-contato@$DOMINIO}"
+PROXY_EXTERNO=false
+if ! $AMBIENTE_LOCAL; then
+  PORTAS_PUBLICAS="$($SUDO ss -ltnp '( sport = :80 or sport = :443 )' 2>/dev/null || true)"
+  OUTROS_PROXY="$(printf '%s\n' "$PORTAS_PUBLICAS" | sed '1d' | sed '/^[[:space:]]*$/d' | grep -v 'nginx' || true)"
+  if [[ -n "$OUTROS_PROXY" ]]; then
+    PROXY_EXTERNO=true
+    echo "Proxy externo detectado nas portas 80/443; ele será preservado:"
+    printf '%s\n' "$OUTROS_PROXY"
+  fi
+fi
 
 echo "[1/9] Verificando sistema e dependências..."
 $SUDO apt-get update
@@ -145,9 +155,11 @@ done
 
 echo "[8/9] Configurando proxy reverso e HTTPS..."
 PROXY_GERENCIADO=false
-if ! $AMBIENTE_LOCAL; then
+if ! $AMBIENTE_LOCAL && ! $PROXY_EXTERNO; then
   "$RAIZ/scripts/configurar-nginx.sh" "$DOMINIO" "$EMAIL_CERTIFICADO"
   PROXY_GERENCIADO=true
+elif $PROXY_EXTERNO; then
+  echo "Configuração NGINX ignorada: o encaminhamento do domínio para 127.0.0.1:3000 pertence ao proxy externo."
 fi
 
 echo "[9/9] Auditoria final..."
@@ -157,9 +169,13 @@ $SUDO docker compose ps --status running | grep -q redis
 if $PROXY_GERENCIADO; then $SUDO nginx -t; fi
 # Valida o origin diretamente; o Cloudflare pode responder com desafio 403
 # para clientes de terminal mesmo quando o portal está saudável.
-if $HTTPS && ! $AMBIENTE_LOCAL; then
+if $PROXY_GERENCIADO && $HTTPS; then
   curl --noproxy '*' -fsS --max-time 15 --resolve "$DOMINIO:443:127.0.0.1" "https://$DOMINIO" >/dev/null
-else
+elif ! $PROXY_EXTERNO; then
   curl -fsS --max-time 15 "$URL_PLATAFORMA" >/dev/null
 fi
-echo "MOVE.ON instalado/atualizado com sucesso em $URL_PLATAFORMA"
+if $PROXY_EXTERNO; then
+  echo "MOVE.ON instalado/atualizado e saudável em 127.0.0.1:3000. O proxy externo deve publicar $URL_PLATAFORMA."
+else
+  echo "MOVE.ON instalado/atualizado com sucesso em $URL_PLATAFORMA"
+fi
