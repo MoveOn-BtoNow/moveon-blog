@@ -144,57 +144,10 @@ for tentativa in {1..30}; do
 done
 
 echo "[8/9] Configurando proxy reverso e HTTPS..."
-PROXY_GERENCIADO=false; OUTRO_PROXY=""
+PROXY_GERENCIADO=false
 if ! $AMBIENTE_LOCAL; then
-  for servico in caddy apache2 haproxy; do
-    if $SUDO systemctl is-active --quiet "$servico" 2>/dev/null; then OUTRO_PROXY="$servico"; break; fi
-  done
-  if [[ -n "$OUTRO_PROXY" ]]; then
-    echo "O serviço $OUTRO_PROXY já controla o proxy da VPS. Ele foi preservado; NGINX não será instalado."
-  else
-    if command -v nginx >/dev/null && ! $SUDO systemctl is-active --quiet nginx 2>/dev/null && $SUDO ss -ltn | grep -Eq ':(80|443)[[:space:]]'; then
-      echo "NGINX está parado e as portas 80/443 pertencem a outro processo. Nada foi alterado." >&2; exit 1
-    fi
-    if ! command -v nginx >/dev/null; then
-      if $SUDO ss -ltn | grep -Eq ':(80|443)[[:space:]]'; then
-        echo "As portas 80/443 estão ocupadas. Nada foi alterado." >&2; exit 1
-      fi
-      $SUDO apt-get install -y nginx
-    fi
-    $SUDO systemctl enable --now nginx
-    ARQUIVO_NGINX="$(mktemp)"
-    cat > "$ARQUIVO_NGINX" <<EOF
-server {
-    listen 80;
-    listen [::]:80;
-    server_name $DOMINIO;
-    client_max_body_size 260M;
-    location / {
-        proxy_pass http://127.0.0.1:3000;
-        proxy_http_version 1.1;
-        proxy_set_header Host \$host;
-        proxy_set_header X-Real-IP \$remote_addr;
-        proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto \$scheme;
-        proxy_set_header Upgrade \$http_upgrade;
-        proxy_set_header Connection "upgrade";
-        proxy_read_timeout 120s;
-    }
-}
-EOF
-    $SUDO install -m 0644 "$ARQUIVO_NGINX" /etc/nginx/sites-available/moveon
-    rm -f "$ARQUIVO_NGINX"
-    $SUDO ln -sfn /etc/nginx/sites-available/moveon /etc/nginx/sites-enabled/moveon
-    $SUDO nginx -t; $SUDO systemctl reload nginx; PROXY_GERENCIADO=true
-    if $HTTPS; then
-      $SUDO apt-get install -y certbot python3-certbot-nginx
-      if ! dig +short A "$DOMINIO" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
-        echo "O domínio $DOMINIO ainda não possui registro DNS A. Configure o DNS e execute novamente." >&2; exit 1
-      fi
-      $SUDO certbot --nginx -d "$DOMINIO" --non-interactive --agree-tos --email "$EMAIL_CERTIFICADO" --redirect --keep-until-expiring
-    fi
-    $SUDO systemctl enable --now certbot.timer 2>/dev/null || true
-  fi
+  "$RAIZ/scripts/configurar-nginx.sh" "$DOMINIO" "$EMAIL_CERTIFICADO"
+  PROXY_GERENCIADO=true
 fi
 
 echo "[9/9] Auditoria final..."
@@ -202,8 +155,5 @@ $SUDO systemctl is-enabled --quiet moveon.service; $SUDO systemctl is-active --q
 $SUDO docker compose ps --status running | grep -q banco
 $SUDO docker compose ps --status running | grep -q redis
 if $PROXY_GERENCIADO; then $SUDO nginx -t; fi
-if ! curl -fsS "$URL_PLATAFORMA" >/dev/null 2>&1; then
-  echo "A aplicação local está saudável, mas $URL_PLATAFORMA ainda não respondeu. Verifique DNS, firewall ou o proxy existente." >&2
-  [[ -z "$OUTRO_PROXY" ]] && exit 1
-fi
+curl -fsS --max-time 10 "$URL_PLATAFORMA" >/dev/null
 echo "MOVE.ON instalado/atualizado com sucesso em $URL_PLATAFORMA"
