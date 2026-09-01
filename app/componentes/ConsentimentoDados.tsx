@@ -29,12 +29,29 @@ function carregarAnalytics(id: string) {
   window.dataLayer = window.dataLayer || [];
   window.gtag = (...argumentos: unknown[]) => window.dataLayer!.push(argumentos);
   window.gtag("js", new Date());
-  window.gtag("config", id, { anonymize_ip: true });
+  window.gtag("config", id, {
+    anonymize_ip: true,
+    send_page_view: false,
+  });
+  const visualizarPagina = () =>
+    window.gtag?.("event", "page_view", {
+      page_location: window.location.href,
+      page_path: `${window.location.pathname}${window.location.search}`,
+      page_title: document.title,
+    });
+  visualizarPagina();
+  let enderecoAnterior = window.location.href;
+  window.analyticsMoveonMonitor ??= window.setInterval(() => {
+    if (window.location.href === enderecoAnterior) return;
+    enderecoAnterior = window.location.href;
+    visualizarPagina();
+  }, 500);
 }
 declare global {
   interface Window {
     dataLayer?: unknown[];
     gtag?: (...args: unknown[]) => void;
+    analyticsMoveonMonitor?: number;
   }
 }
 export default function ConsentimentoDados() {

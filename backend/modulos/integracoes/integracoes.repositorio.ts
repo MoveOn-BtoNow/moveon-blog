@@ -220,7 +220,16 @@ export class RepositorioIntegracoes {
       versaoPolitica: (
         await import("../../compartilhado/seguranca/criptografia")
       ).gerarHashSha256(
-        `${d.consentimentoTitulo}|${d.consentimentoTextoHtml}|${d.politicaPrivacidadeHtml}`,
+        [
+          d.consentimentoTitulo,
+          d.consentimentoTextoHtml,
+          d.politicaPrivacidadeHtml,
+          d.analyticsAtivo,
+          d.analyticsIdMedicao,
+          d.permitirAnalytics,
+          d.permitirPreferencias,
+          d.permitirMarketing,
+        ].join("|"),
       ),
     };
   }
