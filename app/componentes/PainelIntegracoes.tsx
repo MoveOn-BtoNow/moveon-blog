@@ -64,15 +64,28 @@ export default function PainelIntegracoes() {
       .catch((e) => setErroInicial(e.message));
   }, []);
   if (!f) return <div className="tela-estado">Carregando integrações…</div>;
-  const a = (k: keyof C, v: unknown) => setF({ ...f, [k]: v });
+  const a = (k: keyof C, v: unknown) =>
+    setF((atual) => (atual ? { ...atual, [k]: v } : atual));
   async function salvar(servico: Servico) {
     if (!f) return;
+    if (
+      servico === "armazenamento" &&
+      f.armazenamentoModo === "s3" &&
+      !f.s3Bucket.trim()
+    ) {
+      setMensagens((atual) => ({
+        ...atual,
+        armazenamento:
+          "Informe o nome exato do bucket S3. O texto exibido dentro do campo é apenas um exemplo.",
+      }));
+      return;
+    }
     const dados: Record<Servico, Record<string, unknown>> = {
       armazenamento: {
         armazenamentoModo: f.armazenamentoModo,
         s3Endpoint: f.s3Endpoint,
         s3Regiao: f.s3Regiao,
-        s3Bucket: f.s3Bucket,
+        s3Bucket: f.s3Bucket.trim(),
         s3Autenticacao: f.s3Autenticacao,
         s3ChaveAcesso: f.s3ChaveAcesso,
         s3ChaveSecreta: f.s3ChaveSecreta,
@@ -161,7 +174,7 @@ export default function PainelIntegracoes() {
                 n="Bucket"
                 v={f.s3Bucket}
                 set={(v) => a("s3Bucket", v)}
-                p="moveon-conteudos"
+                p="Digite o nome exato do bucket"
               />
               <Campo
                 n="URL pública/CDN"
