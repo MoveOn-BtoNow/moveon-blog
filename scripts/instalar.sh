@@ -158,7 +158,7 @@ if $PROXY_GERENCIADO; then $SUDO nginx -t; fi
 # Valida o origin diretamente; o Cloudflare pode responder com desafio 403
 # para clientes de terminal mesmo quando o portal está saudável.
 if $HTTPS && ! $AMBIENTE_LOCAL; then
-  curl -fsS --max-time 15 --resolve "$DOMINIO:443:127.0.0.1" "https://$DOMINIO" >/dev/null
+  curl --noproxy '*' -fsS --max-time 15 --resolve "$DOMINIO:443:127.0.0.1" "https://$DOMINIO" >/dev/null
 else
   curl -fsS --max-time 15 "$URL_PLATAFORMA" >/dev/null
 fi
