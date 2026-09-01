@@ -46,9 +46,18 @@ else
   sed -i 's/^COOKIE_SEGURO=.*/COOKIE_SEGURO=false/' .env
 fi
 
-npm install || { npm cache verify; npm install; }
-npm update || npm install
-npm audit fix || true
+# Instala exatamente as versões validadas e registradas no package-lock.json.
+# Atualizações automáticas durante a implantação podem introduzir versões
+# incompatíveis sem que o código tenha passado pelos testes do projeto.
+if [[ -f package-lock.json ]]; then
+  npm ci || { npm cache verify; npm ci; }
+else
+  npm install || { npm cache verify; npm install; }
+fi
+
+# A auditoria é informativa. Correções, especialmente com --force, devem ser
+# aplicadas no desenvolvimento, testadas e versionadas antes da implantação.
+npm audit --omit=dev || true
 $SUDO docker compose up -d banco
 for tentativa in {1..30}; do $SUDO docker compose exec -T banco pg_isready -U moveon -d moveon >/dev/null 2>&1 && break; sleep 2; [[ $tentativa -eq 30 ]] && exit 1; done
 npm run banco:migrar
