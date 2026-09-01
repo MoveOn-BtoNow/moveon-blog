@@ -1,0 +1,129 @@
+@startuml
+
+title Portal de Conteúdo / Blog MOVE.ON\nDiagrama de Casos de Uso
+
+left to right direction
+
+skinparam backgroundColor #FFFFFF
+skinparam shadowing false
+skinparam roundCorner 16
+skinparam ArrowColor #555555
+skinparam ArrowThickness 1.1
+skinparam actorStyle awesome
+skinparam actorBorderColor #FE3000
+skinparam actorFontColor #171717
+skinparam actorBackgroundColor #FFFFFF
+skinparam usecase {
+  BackgroundColor #FFFFFF
+  BorderColor #FE3000
+  FontColor #171717
+}
+skinparam rectangle {
+  BackgroundColor #FAFAFA
+  BorderColor #BEBEBE
+  FontColor #171717
+}
+skinparam packageStyle rectangle
+
+actor "Leitor" as Leitor
+actor "Administrador" as Admin
+actor "Agendador" as Agendador
+actor "Serviço de e-mail" as Email
+actor "Rede social" as RedeSocial
+
+rectangle "Portal MOVE.ON" {
+
+  package "Área pública" {
+    usecase "Consultar portal" as UC01
+    usecase "Pesquisar publicações" as UC02
+    usecase "Filtrar por categoria" as UC03
+    usecase "Ler publicação" as UC04
+    usecase "Compartilhar publicação" as UC05
+    usecase "Inscrever-se na newsletter" as UC06
+    usecase "Cancelar newsletter" as UC07
+  }
+
+  package "Área administrativa" {
+    usecase "Autenticar-se" as UC08
+    usecase "Encerrar sessão" as UC09
+
+    usecase "Gerenciar publicações" as UC10
+    usecase "Criar publicação" as UC11
+    usecase "Editar publicação" as UC12
+    usecase "Excluir publicação" as UC13
+    usecase "Pré-visualizar publicação" as UC14
+    usecase "Definir situação da publicação" as UC15
+    usecase "Gerenciar capa e conteúdo multimídia" as UC16
+    usecase "Definir categorias da publicação" as UC17
+    usecase "Definir dados de SEO" as UC18
+
+    usecase "Gerenciar categorias" as UC19
+    usecase "Consultar métricas" as UC20
+    usecase "Gerenciar newsletter" as UC21
+    usecase "Configurar aparência do portal" as UC22
+    usecase "Gerenciar perfil administrativo" as UC23
+    usecase "Alterar senha" as UC24
+  }
+
+  package "Processos automáticos" {
+    usecase "Publicar conteúdo agendado" as UC25
+    usecase "Notificar inscritos" as UC26
+  }
+}
+
+' Ações do leitor
+Leitor --> UC01
+Leitor --> UC02
+Leitor --> UC03
+Leitor --> UC04
+Leitor --> UC05
+Leitor --> UC06
+Leitor --> UC07
+
+' Integrações externas
+RedeSocial --> UC05
+Email --> UC26
+
+' Acesso administrativo
+Admin --> UC08
+Admin --> UC09
+Admin --> UC10
+Admin --> UC19
+Admin --> UC20
+Admin --> UC21
+Admin --> UC22
+Admin --> UC23
+
+' Especializações do gerenciamento de publicações
+UC11 -|> UC10
+UC12 -|> UC10
+UC13 -|> UC10
+
+' Comportamentos associados à edição de publicação
+UC14 ..> UC11 : <<extend>>
+UC14 ..> UC12 : <<extend>>
+UC15 ..> UC11 : <<include>>
+UC15 ..> UC12 : <<include>>
+UC16 ..> UC11 : <<include>>
+UC16 ..> UC12 : <<include>>
+UC17 ..> UC11 : <<include>>
+UC17 ..> UC12 : <<include>>
+UC18 ..> UC11 : <<include>>
+UC18 ..> UC12 : <<include>>
+
+' Perfil e segurança
+UC24 ..> UC23 : <<extend>>
+
+' Automação editorial
+Agendador --> UC25
+UC25 ..> UC26 : <<include>>
+
+legend bottom
+  |= Relação |= Significado |
+  | Associação | O ator utiliza o caso de uso |
+  | <<include>> | Parte obrigatória do fluxo |
+  | <<extend>> | Comportamento opcional ou condicional |
+  | Generalização | Caso específico de uma funcionalidade maior |
+endlegend
+
+@enduml

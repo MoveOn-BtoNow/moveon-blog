@@ -1,100 +1,78 @@
-# vinext-starter
+# Portal MOVE.ON
 
-A clean full-stack starter running on
-[vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and
-Drizzle support.
+Portal de conteúdo com interface pública, dashboard autenticado, PostgreSQL, métricas reais e upload seguro de imagens.
 
-## Prerequisites
+## Instalação automática no Ubuntu Server
 
-- Node.js `>=22.13.0`
-
-## Quick Start
+Na raiz do projeto, execute:
 
 ```bash
+chmod +x scripts/instalar.sh
+./scripts/instalar.sh https://blog.seudominio.com.br
+```
+
+O instalador configura Docker, Node.js 22, dependências atualizadas compatíveis, `.env`, senhas aleatórias, PostgreSQL, migrations, seeders, testes de tipos, build e inicialização. As credenciais iniciais são gravadas com permissão restrita em `CREDENCIAIS-INICIAIS.txt`. Execute novamente para atualizar/reparar uma instalação existente. O domínio deve apontar para a VPS; configure depois seu proxy reverso (Nginx/Caddy) para a porta 3000 e HTTPS.
+
+O banco utiliza a política Docker `restart: unless-stopped`. O portal e a API são instalados como o serviço `moveon.service`, habilitado automaticamente no boot da VPS e configurado com `Restart=always`. Assim, a plataforma volta a operar após reinicialização do Ubuntu ou falha inesperada do processo.
+
+Gerenciamento e logs do serviço:
+
+```bash
+sudo systemctl status moveon
+sudo systemctl restart moveon
+sudo systemctl stop moveon
+sudo systemctl start moveon
+sudo journalctl -u moveon -f
+sudo systemctl is-enabled moveon
+```
+
+## Instalação local
+
+Requisitos: Node.js 22+, Docker e Docker Compose.
+
+```bash
+cp .env.example .env
 npm install
+npm run banco:preparar
 npm run dev
-npm run build
 ```
 
-This starter does not use `wrangler.jsonc`.
+- Portal: `http://localhost:3000`
+- Administração: `http://localhost:3000/admin`
+- API: `http://127.0.0.1:3001`
+- PostgreSQL: database `moveon`, schema `public`, porta `5434`
 
-## Included Shape
+## Comandos
 
-- edit site code under `app/`
-- `.servico-externo/hosting.json` declares optional Sites D1 and R2 bindings
-- `vite.config.ts` simulates declared bindings for local development
-- `db/schema.ts` starts intentionally empty
-- `examples/d1/` contains an optional D1 example surface
-- `drizzle.config.ts` supports local migration generation when needed
+- `npm run dev`: portal e API em desenvolvimento.
+- `npm run start:producao`: portal e API compilados.
+- `npm run verificar`: tipos e build.
+- `npm run banco:preparar`: sobe PostgreSQL, aplica migrations e seeder.
+- `npm run banco:migrar`: aplica somente migrations pendentes.
+- `npm run banco:semear`: atualiza administrador, categorias e configurações iniciais.
+- `npm run banco:parar`: encerra os containers.
 
-## Workspace Auth Headers
+## Variáveis e segurança
 
-Signed-in visitors receive both `oai-authenticated-user-id` and `oai-authenticated-user-email`. Private Sites require every visitor to sign in; public Sites may also have anonymous visitors, for whom neither header is present.
+Todas as configurações mutáveis e segredos ficam no `.env`, que não deve ser versionado. Em produção, use HTTPS e defina `COOKIE_SEGURO=true`. Senhas usam bcrypt; sessões usam cookie HttpOnly e token com hash; entradas são validadas no backend; HTML é higienizado; imagens são verificadas pelo conteúdo real, formato e tamanho. Métricas descartam robôs, administradores e visualizações diárias duplicadas.
 
-The user ID is stable for the same user on the same Site and different across Sites. Email and name are intended for display or contact purposes.
+`LIMITE_PUBLICACOES_DESTAQUE` define quantas publicações podem permanecer simultaneamente no carrossel principal. Ao atingir o limite, o backend remove automaticamente do destaque as publicações mais antigas.
 
-SIWC-authenticated workspace sites may also receive
-`oai-authenticated-user-full-name` when the user's SIWC profile has a non-empty
-`name` claim. The full-name value is percent-encoded UTF-8 and is accompanied by
-`oai-authenticated-user-full-name-encoding: percent-encoded-utf-8`.
+Uploads são armazenados em `uploads/capas` e `uploads/perfis`; faça backup dessas pastas junto ao volume PostgreSQL `moveon_dados`.
 
-Treat the full name as optional and fall back to email when it is absent:
+## Storage, Analytics e observabilidade
 
-```tsx
-import { headers } from "next/headers";
+Em **Dashboard > Integrações**, o portal oferece duas alternativas:
 
-export default async function Home() {
-  const requestHeaders = await headers();
-  const userId = requestHeaders.get("oai-authenticated-user-id");
-  const email = requestHeaders.get("oai-authenticated-user-email");
-  const encodedFullName = requestHeaders.get("oai-authenticated-user-full-name");
-  const fullName =
-    encodedFullName &&
-    requestHeaders.get("oai-authenticated-user-full-name-encoding") ===
-      "percent-encoded-utf-8"
-      ? decodeURIComponent(encodedFullName)
-      : null;
+- **Storage local:** imagens permanecem em `uploads/`. É simples para uma VPS, mas exige backup do disco e sincronização própria ao escalar.
+- **Object Storage S3:** imagens otimizadas e vídeos ficam no bucket; o PostgreSQL mantém somente URLs e metadados. É a opção recomendada para produção, CDN, grande volume de mídia e múltiplas instâncias. Funciona com AWS S3 e provedores compatíveis por endpoint e `path-style` configuráveis.
 
-  const displayName = fullName ?? email;
-  // ...
-}
-```
+Credenciais S3 e cabeçalhos OTLP são criptografados e nunca retornam ao navegador. Use uma identidade IAM exclusiva com acesso apenas ao bucket do portal. A troca de modo afeta novos uploads; arquivos existentes devem ser migrados de forma controlada antes da remoção do storage anterior.
 
-## Optional Dispatch-Owned ChatGPT Sign-In
+O Google Analytics 4 usa o ID `G-...` configurado no painel. Com consentimento ativo, a tag não é baixada antes da autorização. O visitante pode aceitar, recusar ou escolher análise, preferências e marketing; a versão da política e a decisão são registradas de forma minimizada.
 
-Import the ready-to-use helpers from `app/chatgpt-auth.ts` when the site needs
-optional or required ChatGPT sign-in:
+O backend inclui o SDK OpenTelemetry e exportador OTLP/HTTP de logs. Configure endpoint `/v1/logs`, nome do serviço, nível mínimo e cabeçalhos. O envio é feito em lote e pode ser reconfigurado pelo dashboard sem instalar pacotes arbitrários em tempo de execução.
 
-- Use `getChatGPTUser()` for optional signed-in UI.
-- Use `requireChatGPTUser(returnTo)` for server-rendered pages that should send
-  anonymous visitors through Sign in with ChatGPT.
-- Use `chatGPTSignInPath(returnTo)` and `chatGPTSignOutPath(returnTo)` for
-  browser links or actions.
-- Pass a same-origin relative `returnTo` path for the destination after sign-in
-  or sign-out. The helper validates and safely encodes it.
-- Mark protected pages with `export const dynamic = "force-dynamic"` because
-  they depend on per-request identity headers.
+## Newsletter e SMTP
 
-Dispatch owns `/signin-with-chatgpt`, `/signout-with-chatgpt`, `/callback`, the
-OAuth cookies, and identity header injection. Do not implement app routes for
-those reserved paths. Routes that do not import and call the helper remain
-anonymous-compatible.
-
-SIWC establishes identity only; it does not prove workspace membership. Use the
-Sites hosting platform's access policy controls for workspace-wide restrictions,
-or enforce explicit server-side membership or allowlist checks.
-
-Use SIWC for account pages, user-specific dashboards, saved records, and write
-actions tied to the current ChatGPT user. Leave public content anonymous.
-
-## Useful Commands
-
-- `npm run dev`: start local development
-- `npm run build`: verify the vinext build output
-- `npm test`: build the starter and verify its rendered loading skeleton
-- `npm run db:generate`: generate Drizzle migrations after schema changes
-
-## Learn More
-
-- [vinext Documentation](https://github.com/cloudflare/vinext)
-- [Drizzle D1 Guide](https://orm.drizzle.team/docs/get-started/d1-new)
+Configure no `.env`: `EMAIL_ATIVO`, `SMTP_HOST`, `SMTP_PORTA`, `SMTP_SEGURO`, `SMTP_USUARIO`, `SMTP_SENHA`, `EMAIL_REMETENTE_NOME`, `EMAIL_REMETENTE_ENDERECO` e `EMAIL_SEGREDO_CANCELAMENTO`. Ative `EMAIL_ATIVO=true` somente após informar credenciais SMTP válidas. O dashboard permite editar assunto/texto e listar inscritos; cada mensagem contém cancelamento assinado. Publicações novas ou agendadas geram uma fila persistente, com até três tentativas de envio.

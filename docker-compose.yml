@@ -1,0 +1,23 @@
+services:
+  banco:
+    image: ${POSTGRES_IMAGEM}
+    container_name: ${POSTGRES_CONTAINER}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_BANCO}
+      POSTGRES_USER: ${POSTGRES_USUARIO}
+      POSTGRES_PASSWORD: ${POSTGRES_SENHA}
+      TZ: ${FUSO_HORARIO}
+      PGTZ: ${FUSO_HORARIO}
+    ports:
+      - "${POSTGRES_HOST}:${POSTGRES_PORTA}:${POSTGRES_PORTA_INTERNA}"
+    volumes:
+      - moveon_dados:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USUARIO} -d ${POSTGRES_BANCO}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  moveon_dados:

@@ -1,0 +1,234 @@
+@startuml
+
+title Portal de Conteúdo / Blog MOVE.ON\nDiagrama de Atividades
+
+skinparam backgroundColor white
+skinparam shadowing false
+skinparam roundCorner 15
+skinparam ArrowColor #555555
+skinparam activity {
+  BackgroundColor white
+  BorderColor #FE3000
+  DiamondBackgroundColor #FFF3EF
+  DiamondBorderColor #FE3000
+  StartColor #FE3000
+  EndColor #171717
+  BarColor #FE3000
+  FontColor #171717
+}
+
+start
+
+:Acessar a plataforma;
+
+if (Área desejada?) then (Portal público)
+
+  partition "Leitor" {
+    :Visualizar página inicial;
+    :Consultar destaques e publicações recentes;
+  }
+
+  repeat
+    partition "Leitor" {
+      :Escolher uma ação;
+    }
+
+    if (Pesquisar?) then (sim)
+      partition "Portal" {
+        :Abrir campo de busca;
+      }
+      partition "Leitor" {
+        :Informar termo da pesquisa;
+      }
+      partition "Portal" {
+        :Localizar publicações relacionadas;
+        :Exibir resultados encontrados;
+      }
+
+    elseif (Filtrar categoria?) then (sim)
+      partition "Leitor" {
+        :Selecionar categoria;
+      }
+      partition "Portal" {
+        :Exibir publicações da categoria;
+      }
+
+    elseif (Ler publicação?) then (sim)
+      partition "Leitor" {
+        :Selecionar publicação;
+      }
+      partition "Portal" {
+        :Abrir publicação completa;
+        :Registrar acesso válido;
+      }
+      partition "Leitor" {
+        :Ler conteúdo;
+      }
+
+      if (Compartilhar?) then (sim)
+        partition "Leitor" {
+          :Escolher rede social;
+        }
+        partition "Portal" {
+          :Abrir opção de compartilhamento;
+          :Registrar compartilhamento;
+        }
+      endif
+
+      if (Voltar às publicações?) then (sim)
+        partition "Portal" {
+          :Retornar à posição anterior;
+        }
+      endif
+
+    elseif (Assinar newsletter?) then (sim)
+      partition "Leitor" {
+        :Informar e-mail;
+      }
+      partition "Portal" {
+        :Validar e cadastrar inscrição;
+        :Exibir confirmação;
+      }
+
+    else (Continuar listagem)
+      partition "Portal" {
+        :Carregar mais publicações;
+      }
+    endif
+
+  repeat while (Continuar no portal?) is (sim)
+  -> não;
+
+else (Administração)
+
+  partition "Sistema" {
+    :Verificar sessão administrativa;
+  }
+
+  if (Sessão válida?) then (sim)
+    partition "Dashboard" {
+      :Abrir painel administrativo;
+    }
+  else (não)
+    partition "Administrador" {
+      :Informar e-mail e senha;
+    }
+    partition "Sistema" {
+      :Validar credenciais;
+    }
+
+    if (Credenciais válidas?) then (sim)
+      partition "Sistema" {
+        :Criar sessão;
+      }
+      partition "Dashboard" {
+        :Abrir painel administrativo;
+      }
+    else (não)
+      partition "Dashboard" {
+        :Exibir erro de autenticação;
+      }
+      stop
+    endif
+  endif
+
+  repeat
+    partition "Administrador" {
+      :Selecionar módulo;
+    }
+
+    if (Gerenciar publicações?) then (sim)
+      partition "Dashboard" {
+        :Listar publicações;
+      }
+      partition "Administrador" {
+        :Criar, editar ou excluir publicação;
+        :Definir conteúdo, capa e categorias;
+        :Pré-visualizar publicação;
+        :Definir status da publicação;
+      }
+      partition "Sistema" {
+        :Validar e salvar publicação;
+      }
+
+      if (Publicação agendada?) then (sim)
+        partition "Sistema" {
+          :Publicar automaticamente na data definida;
+        }
+      endif
+
+      if (Publicação publicada?) then (sim)
+        partition "Sistema" {
+          :Enviar atualização aos inscritos;
+        }
+      endif
+
+    elseif (Gerenciar categorias?) then (sim)
+      partition "Administrador" {
+        :Criar, editar ou excluir categoria;
+      }
+      partition "Sistema" {
+        :Validar e salvar alterações;
+      }
+
+    elseif (Consultar métricas?) then (sim)
+      partition "Sistema" {
+        :Calcular acessos e engajamentos válidos;
+      }
+      partition "Dashboard" {
+        :Exibir indicadores e publicações mais acessadas;
+      }
+
+    elseif (Gerenciar newsletter?) then (sim)
+      partition "Administrador" {
+        :Consultar inscritos;
+        :Editar modelo da newsletter;
+      }
+      partition "Sistema" {
+        :Salvar configurações;
+      }
+
+    elseif (Configurar portal?) then (sim)
+      partition "Administrador" {
+        :Alterar identidade e cores;
+      }
+      partition "Sistema" {
+        :Salvar e aplicar configurações;
+      }
+
+    elseif (Gerenciar perfil?) then (sim)
+      partition "Administrador" {
+        :Alterar nome, foto, e-mail ou senha;
+      }
+      partition "Sistema" {
+        :Validar e salvar perfil;
+      }
+
+      if (Senha alterada?) then (sim)
+        partition "Sistema" {
+          :Encerrar sessões de todos os dispositivos;
+        }
+        partition "Dashboard" {
+          :Retornar à tela de login;
+        }
+        stop
+      endif
+
+    else (Encerrar sessão)
+      partition "Sistema" {
+        :Finalizar sessão atual;
+      }
+      partition "Dashboard" {
+        :Exibir tela de login;
+      }
+      stop
+    endif
+
+  repeat while (Continuar no dashboard?) is (sim)
+  -> não;
+
+endif
+
+stop
+
+@enduml
