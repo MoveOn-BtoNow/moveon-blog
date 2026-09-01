@@ -1,6 +1,5 @@
 import os, sys, re, json, textwrap
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).parent / '.dependencias'))
 from docx import Document
 from docx.shared import Inches, Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
@@ -92,6 +91,18 @@ def make_diagrams():
         y=60+i*115;d.ellipse((960,y,1400,y+72),fill='white',outline='#777',width=2);d.text((1000,y+20),t,font=font(19),fill='#222');arrow(d,(1510,460),(1400,y+36))
     im.save(DIA/'casos-uso.png')
 
+    im=Image.new('RGB',(1900,1080),'white');d=ImageDraw.Draw(im)
+    d.text((55,25),'Integrações externas — visão para operação',font=font(36),fill='#111111')
+    box(d,(60,135,400,240),'Pessoa visitante','<<Fronteira>>',['abre o portal','escolhe o consentimento','visualiza imagens e vídeos'],'#FFF8F6')
+    box(d,(570,135,400,240),'Portal MOVE.ON','<<Controle>>',['aplica a escolha de privacidade','carrega a tag somente se permitido','entrega mídia privada com cache'],'#FFF8F6')
+    box(d,(1080,80,360,210),'Google Analytics 4','<<Serviço externo>>',['recebe page_view autorizado','usa ID G-...','relatório em tempo real'],'#F7F8FA')
+    box(d,(1080,340,360,210),'AWS S3 privado','<<Infraestrutura>>',['IAM Role na EC2','imagens e vídeos','sem chave no código'],'#F7F8FA')
+    box(d,(1080,600,360,210),'Collector OTLP/HTTP','<<Observabilidade>>',['endpoint /v1/logs','lotes de logs','headers protegidos'],'#F7F8FA')
+    box(d,(570,690,400,210),'PostgreSQL','<<Entidade>>',['configurações','URLs e metadados','segredos criptografados'],'#FFFDF8')
+    arrow(d,(460,255),(570,255),'HTTPS');arrow(d,(970,210),(1080,185),'consentido');arrow(d,(970,290),(1080,445),'IAM Role');arrow(d,(970,345),(1080,705),'OTLP');arrow(d,(770,375),(770,690),'configuração')
+    d.text((65,920),'Ideia central: o painel liga e configura cada serviço separadamente; o backend valida, protege segredos e testa a conexão.',font=font(22),fill='#333333')
+    im.save(DIA/'integracoes.png')
+
 def set_cell_shading(cell,fill):
     tcPr=cell._tc.get_or_add_tcPr();shd=tcPr.find(qn('w:shd'))
     if shd is None: shd=OxmlElement('w:shd');tcPr.append(shd)
@@ -149,6 +160,15 @@ def add_picture(doc,path,width,alt):
     shape._inline.docPr.set('descr',alt)
     return shape
 def pagebreak(doc):doc.add_page_break()
+def codeblock(doc,text):
+    p=doc.add_paragraph()
+    p.paragraph_format.space_before=Pt(4);p.paragraph_format.space_after=Pt(8)
+    p.paragraph_format.left_indent=Inches(.18);p.paragraph_format.right_indent=Inches(.18)
+    shd=OxmlElement('w:shd');shd.set(qn('w:fill'),'F4F5F7');p._p.get_or_add_pPr().append(shd)
+    for i,line in enumerate(text.strip().splitlines()):
+        if i:p.add_run().add_break()
+        r=p.add_run(line);r.font.name='Consolas';r._element.get_or_add_rPr().rFonts.set(qn('w:ascii'),'Consolas');r.font.size=Pt(8);r.font.color.rgb=RGBColor(35,35,35)
+    return p
 def section_intro(doc,objective,contents):
     table=add_table(doc,['Objetivo desta seção','O que será apresentado'],[(objective,contents)],[3400,5960],8.5)
     for cell in table.rows[1].cells:set_cell_shading(cell,'FFF8F6')
@@ -167,17 +187,17 @@ TABLES={
 'publicacoes':[('id','uuid, PK','Publicação'),('titulo','varchar(180)','Título'),('slug','varchar(200), UNIQUE','URL + hash curto'),('resumo','varchar(500)','Resumo'),('conteudo','jsonb','HTML higienizado'),('situacao','enum','rascunho/agendada/publicada/arquivada'),('destaque','boolean','Destaque'),('metatitulo','varchar(180)','SEO'),('metadescricao','varchar(320)','SEO'),('publicado_em','timestamptz','Publicação'),('agendado_para','timestamptz','Agendamento'),('administrador_id','uuid, FK','Responsável'),('criado_em','timestamptz','Criação'),('atualizado_em','timestamptz','Alteração'),('imagem_capa_url','varchar(1000)','Capa WebP/link'),('imagem_social_url','varchar(1000)','JPEG 1200×630'),('texto_alternativo_capa','varchar(300)','Acessibilidade/SEO'),('documento_busca','tsvector gerado','FTS ponderado')],
 'publicacoes_categorias':[('publicacao_id','uuid, PK/FK','Publicação'),('categoria_id','uuid, PK/FK','Categoria')],
 'midias':[('id','uuid, PK','Mídia'),('publicacao_id','uuid, FK','Publicação opcional'),('tipo','enum','imagem/vídeo/arquivo'),('nome_original','varchar(255)','Nome recebido'),('nome_armazenado','varchar(255), UNIQUE','Nome seguro'),('tipo_mime','varchar(100)','MIME'),('tamanho_bytes','bigint','Até 50 MiB'),('largura','integer','Pixels'),('altura','integer','Pixels'),('texto_alternativo','varchar(300)','Acessibilidade'),('ordem','integer','Ordenação'),('capa','boolean','Indica capa'),('criado_em','timestamptz','Criação')],
-'configuracoes_portal':[('id','smallint, PK=1','Registro único'),('nome','varchar(120)','Nome'),('descricao','varchar(300)','Descrição'),('caminho_logo','varchar(500)','Logo'),('caminho_favicon','varchar(500)','Favicon'),('atualizado_por','uuid, FK','Administrador'),('atualizado_em','timestamptz','Alteração'),('cor_primaria','varchar(7)','Cor principal'),('cor_fundo_claro','varchar(7)','Fundo claro'),('cor_fundo_escuro','varchar(7)','Fundo escuro'),('cor_texto_claro','varchar(7)','Texto claro'),('cor_texto_escuro','varchar(7)','Texto escuro'),('newsletter_assunto','varchar(180)','Modelo do assunto'),('newsletter_texto','text','Modelo do corpo')],
+'configuracoes_portal':[('id','smallint, PK=1','Registro único'),('nome','varchar(120)','Nome'),('descricao','varchar(300)','Descrição'),('caminho_logo','varchar(500)','Logo'),('caminho_favicon','varchar(500)','Favicon'),('atualizado_por','uuid, FK','Administrador'),('atualizado_em','timestamptz','Alteração'),('cor_primaria','varchar(7)','Cor principal'),('cor_fundo_claro','varchar(7)','Fundo claro'),('cor_fundo_escuro','varchar(7)','Fundo escuro'),('cor_texto_claro','varchar(7)','Texto claro'),('cor_texto_escuro','varchar(7)','Texto escuro'),('newsletter_assunto','varchar(180)','Modelo do assunto'),('newsletter_texto','text','Modelo do corpo'),('armazenamento_modo','varchar','local ou S3'),('s3_endpoint / s3_regiao / s3_bucket','varchar','Destino de objetos'),('s3_autenticacao','varchar','IAM Role ou chaves manuais'),('s3_chave_acesso_criptografada / s3_chave_secreta_criptografada','text','Segredos cifrados, quando usados'),('s3_url_publica / s3_forcar_path_style','varchar / boolean','Entrega pública/CDN e compatibilidade'),('analytics_ativo / analytics_id_medicao','boolean / varchar','Google Analytics 4'),('consentimento_ativo / permitir_*','boolean','Preferências de privacidade'),('otel_ativo / otel_endpoint / otel_nome_servico / otel_nivel_minimo','tipos escalares','Exportação OTLP'),('otel_cabecalhos_criptografados','text','Cabeçalhos OTLP protegidos')],
 'eventos_acesso':[('id','bigint identity, PK','Evento'),('tipo','enum','visualização/compartilhamento/busca/categoria'),('publicacao_id','uuid, FK','Publicação'),('categoria_id','uuid, FK','Categoria'),('identificador_visitante_hash','char(64)','Visitante anonimizado'),('endereco_ip_hash','char(64)','IP anonimizado'),('agente_usuario','varchar(500)','Cliente'),('referencia','varchar(1000)','Contexto'),('dados','jsonb','Extensão'),('ocorrido_em','timestamptz','Horário'),('e_robo','boolean','Filtra robôs'),('e_administrador','boolean','Filtra equipe')],
 'termos_busca':[('id','bigint identity, PK','Busca'),('termo','varchar(200)','Texto'),('identificador_visitante_hash','char(64)','Visitante'),('quantidade_resultados','integer','Resultados'),('pesquisado_em','timestamptz','Horário')],
 'inscricoes_newsletter':[('id','uuid, PK','Inscrição'),('email','varchar(254), UNIQUE','Destinatário'),('confirmada','boolean','Estado'),('token_confirmacao_hash','char(64)','Confirmação'),('inscrito_em','timestamptz','Cadastro'),('cancelado_em','timestamptz','Opt-out')],
 'envios_newsletter':[('id','bigint identity, PK','Envio'),('inscricao_id','uuid, FK','Inscrito'),('publicacao_id','uuid, FK','Publicação'),('situacao','varchar(20)','pendente/enviando/enviado/falhou'),('tentativas','smallint','Retentativas'),('erro','varchar(1000)','Falha'),('criado_em','timestamptz','Fila'),('enviado_em','timestamptz','Entrega')],}
 
 FUNCTIONS=[
-('criarAplicacao','Monta Express, Helmet, CORS, JSON, arquivos estáticos, rotas e erros.'),('executarMigrations','Aplica migrations ordenadas uma única vez.'),('executarSemente','Insere/atualiza administrador, categorias e configuração inicial.'),('gerarTokenSeguro / gerarHashSha256','Cria tokens e hashes criptográficos.'),('higienizarConteudoHtml','Remove HTML perigoso e força lazy loading em mídia.'),('lerCookie / criarCookieSessao / criarCookieExpirado','Manipula sessão HttpOnly/Secure/SameSite.'),('exigirAutenticacao','Autoriza rotas administrativas consultando sessão persistida.'),('armazenarCapa','Valida formato real e gera WebP + JPEG social.'),('armazenarFotoPerfil','Valida e converte foto de alta resolução para WebP 512×512.'),('fotoPerfilExiste / excluirFotoPerfil','Evita referências órfãs e remove arquivo gerenciado.'),('criarSlug','Normaliza título e acrescenta hash aleatório curto.'),('generateMetadata','Gera canonical, Open Graph, Twitter e metadados do artigo.'),('sitemap / robots','Expõe descoberta e regras de indexação.'),('registrar','Envia eventos válidos e anonimizados.'),('api','Cliente HTTP unificado com credenciais e erros.'),('EditorRico','Edição HTML, links, cores, fontes, mídia e redimensionamento.'),('InscricaoNewsletter','Cadastro público com validação.'),('Compartilhamento','WhatsApp, Instagram, LinkedIn, Facebook, X, Telegram, e-mail e Web Share.')]
+('criarAplicacao','Monta Express, Helmet, CORS, JSON, arquivos estáticos, rotas e erros.'),('executarMigrations','Aplica migrations ordenadas uma única vez.'),('executarSemente','Insere/atualiza administrador, categorias e configuração inicial.'),('gerarTokenSeguro / gerarHashSha256','Cria tokens e hashes criptográficos.'),('higienizarConteudoHtml','Remove HTML perigoso e força lazy loading em mídia.'),('lerCookie / criarCookieSessao / criarCookieExpirado','Manipula sessão HttpOnly/Secure/SameSite.'),('exigirAutenticacao','Autoriza rotas administrativas consultando sessão persistida.'),('armazenarCapa','Valida formato real e gera WebP + JPEG social.'),('armazenarFotoPerfil','Valida e converte foto de alta resolução para WebP 512×512.'),('fotoPerfilExiste / excluirFotoPerfil','Evita referências órfãs e remove arquivo gerenciado.'),('criarSlug','Normaliza título e acrescenta hash aleatório curto.'),('generateMetadata','Gera canonical, Open Graph, Twitter e metadados do artigo.'),('sitemap / robots','Expõe descoberta e regras de indexação.'),('registrar','Envia eventos válidos e anonimizados.'),('api','Cliente HTTP unificado com credenciais e erros.'),('EditorRico','Edição HTML, links, cores, fontes, mídia e redimensionamento.'),('InscricaoNewsletter','Cadastro público com validação.'),('Compartilhamento','WhatsApp, Instagram, LinkedIn, Facebook, X, Telegram, e-mail e Web Share.'),('enviarArquivo / excluirArquivo','Escolhe armazenamento local ou S3, preserva metadados e remove objetos gerenciados.'),('resolverMidiaPrivada','Autoriza a leitura de objeto privado por rota controlada, sem tornar o bucket público.'),('configurarOpenTelemetry','Inicializa exportação OTLP em lote apenas quando a integração está habilitada.'),('testarOpenTelemetry','Envia um registro real ao Collector e retorna diagnóstico do transporte.')]
 
 CLASSES=[
-('ControladorAutenticacao','<<Controle>>','Orquestra login, consulta e logout; emite/expira cookie.'),('ServicoAutenticacao','<<Controle>>','Valida senha, cria token, recupera administrador e encerra sessão.'),('RepositorioAutenticacao','<<Controle>>','SQL de administradores e sessões.'),('LimitadorLogin','<<Controle>>','Controla falhas e bloqueio temporário por origem.'),('ControladorPainel','<<Controle>>','Valida e coordena CRUD, upload, perfil, métricas e newsletter.'),('RepositorioPainel','<<Controle>>','Transações e consultas administrativas.'),('RepositorioPortal','<<Controle>>','Feed, cursor, FTS, artigo, eventos e inscrição.'),('ServicoNewsletter','<<Controle>>','Publica agendadas, cria fila, envia e retenta e-mails.'),('Portal','<<Fronteira>>','Página pública, tema, busca e scroll infinito.'),('Login','<<Fronteira>>','Formulário administrativo acessível.'),('Painel','<<Fronteira>>','Shell e navegação do dashboard.'),('Editor','<<Fronteira>>','Formulário completo de publicação.'),('EditorRico','<<Fronteira>>','Editor visual e mídia redimensionável.'),('Compartilhamento','<<Fronteira>>','Ações de redes sociais e topo/voltar.')]
+('ControladorAutenticacao','<<Controle>>','Orquestra login, consulta e logout; emite/expira cookie.'),('ServicoAutenticacao','<<Controle>>','Valida senha, cria token, recupera administrador e encerra sessão.'),('RepositorioAutenticacao','<<Controle>>','SQL de administradores e sessões.'),('LimitadorLogin','<<Controle>>','Controla falhas e bloqueio temporário por origem.'),('ControladorPainel','<<Controle>>','Valida e coordena CRUD, upload, perfil, métricas e newsletter.'),('RepositorioPainel','<<Controle>>','Transações e consultas administrativas.'),('RepositorioPortal','<<Controle>>','Feed, cursor, FTS, artigo, eventos e inscrição.'),('RepositorioIntegracoes','<<Controle>>','Lê e persiste separadamente Storage, GA4, consentimento e OpenTelemetry.'),('ControladorIntegracoes','<<Controle>>','Valida cada formulário, protege segredos e executa testes reais.'),('ArmazenamentoObjetos','<<Controle>>','Abstrai arquivos locais, AWS S3, IAM Role, chaves manuais e exclusão.'),('ExportadorOpenTelemetry','<<Controle>>','Agrupa logs e os envia ao Collector por OTLP/HTTP.'),('ServicoNewsletter','<<Controle>>','Publica agendadas, cria fila, envia e retenta e-mails.'),('Portal','<<Fronteira>>','Página pública, tema, busca e scroll infinito.'),('Login','<<Fronteira>>','Formulário administrativo acessível.'),('Painel','<<Fronteira>>','Shell e navegação do dashboard.'),('PainelIntegracoes','<<Fronteira>>','Formulários independentes de Storage, GA4 e OTLP, com diagnóstico.'),('Editor','<<Fronteira>>','Formulário completo de publicação.'),('EditorRico','<<Fronteira>>','Editor visual e mídia redimensionável.'),('Compartilhamento','<<Fronteira>>','Ações de redes sociais e topo/voltar.')]
 
 def configure(doc):
     sec=doc.sections[0];sec.page_width=Inches(8.5);sec.page_height=Inches(11);sec.top_margin=sec.bottom_margin=sec.left_margin=sec.right_margin=Inches(1)
@@ -191,12 +211,10 @@ def configure(doc):
     footer=sec.footer.paragraphs[0];footer.alignment=WD_ALIGN_PARAGRAPH.CENTER
     footer.add_run('Documento técnico • uso interno • ')
     fld=OxmlElement('w:fldSimple');fld.set(qn('w:instr'),'PAGE');footer._p.append(fld)
-    settings=doc.settings._element
-    update=OxmlElement('w:updateFields');update.set(qn('w:val'),'true');settings.append(update)
 
 def toc(doc):
     p=doc.add_paragraph();p.add_run('Sumário').bold=True;p.runs[0].font.size=Pt(18);p.runs[0].font.color.rgb=RGBColor.from_string(RED)
-    fld=OxmlElement('w:fldSimple');fld.set(qn('w:instr'),'TOC \\o "1-3" \\h \\z \\u');p._p.addnext(fld)
+    para(doc,'1. Visão geral e objetivos\n2. Requisitos e escopo funcional\n3. Casos de uso\n4. Arquitetura e decisões técnicas\n5. Segurança, privacidade e LGPD\n6. Modelagem completa do banco de dados\n7. Instalação e operação\n8. Variáveis de ambiente\n9. Estrutura do projeto\n10. Rotas e contratos HTTP\n11. Catálogo de classes e funções\n12. Operação, testes e manutenção\n13. Matriz de rastreabilidade\n14. Glossário')
 
 def build():
     make_diagrams();doc=Document();configure(doc)
@@ -205,15 +223,15 @@ def build():
     p=doc.add_paragraph();p.alignment=WD_ALIGN_PARAGRAPH.CENTER;r=p.add_run('Portal de Conteúdo / Blog MOVE.ON');r.bold=True;r.font.name='Arial';r.font.size=Pt(30);r.font.color.rgb=RGBColor.from_string(BLACK)
     p=doc.add_paragraph('Arquitetura, requisitos, casos de uso, classes, banco de dados, segurança, operação e manutenção');p.alignment=WD_ALIGN_PARAGRAPH.CENTER
     if (ROOT/'public'/'logo.png').exists():add_picture(doc,ROOT/'public'/'logo.png',Inches(2.2),'Logotipo institucional MOVE.ON em vermelho.');doc.paragraphs[-1].alignment=WD_ALIGN_PARAGRAPH.CENTER
-    p=doc.add_paragraph('\nVersão do documento: 1.0\nData de referência: 13 de agosto de 2026\nBase documental: código-fonte e schema efetivamente implementados');p.alignment=WD_ALIGN_PARAGRAPH.CENTER
+    p=doc.add_paragraph('\nVersão do documento: 1.2\nData de referência: 1º de setembro de 2026\nBase documental: código-fonte e schema efetivamente implementados');p.alignment=WD_ALIGN_PARAGRAPH.CENTER
     pagebreak(doc);toc(doc);pagebreak(doc)
 
     add_heading(doc,'Controle e orientação do documento',1)
     section_intro(doc,'Estabelecer a finalidade, o público e os limites desta especificação.','Controle de versão, leitores esperados, fontes de verdade e convenções gráficas.')
     add_table(doc,['Item','Definição'],[
       ('Documento','Especificação Técnica do Portal de Conteúdo / Blog MOVE.ON'),
-      ('Versão','1.1 — revisão estrutural e ampliação descritiva'),
-      ('Data de referência','13 de agosto de 2026'),
+      ('Versão','1.2 — integrações, privacidade e observabilidade detalhadas'),
+      ('Data de referência','1º de setembro de 2026'),
       ('Estado descrito','Implementação existente no repositório, migrations 0001 a 0007'),
       ('Público-alvo','Desenvolvedores, arquitetos, DevOps, QA, segurança, produto e manutenção'),
       ('Fontes de verdade','Código TypeScript/React, SQL das migrations, .env.example, Docker Compose e scripts'),
@@ -368,20 +386,196 @@ def build():
     ],[1800,4800,2760],7.7)
     add_heading(doc,'7.2 Limites e recomendações de produção',2);bullets(doc,['COOKIE_SEGURO=true atrás de HTTPS.','Rotacionar ADMIN_SENHA, POSTGRES_SENHA, SMTP_SENHA e EMAIL_SEGREDO_CANCELAMENTO.','Persistir uploads em volume/backups ou armazenamento de objetos em escala horizontal.','Aplicar reverse proxy com TLS, compressão, rate limiting distribuído e CDN.','Monitorar fila, pool, latência, erros e espaço em disco.'])
 
+    add_heading(doc,'7.3 Manual completo das integrações externas',2)
+    section_intro(doc,'Explicar, em linguagem acessível, como armazenamento, medição de audiência e observabilidade se conectam ao portal.','Conceitos, decisões, configuração no dashboard, exemplos seguros, testes, mensagens de erro e procedimentos de recuperação.')
+    para(doc,'As integrações ficam em Dashboard > Integrações. Cada serviço possui o próprio botão Salvar. Essa separação é intencional: salvar o armazenamento não altera o Google Analytics, e salvar o Analytics não altera o OpenTelemetry. Para uma pessoa não técnica, a melhor analogia é imaginar três tomadas independentes: uma guarda arquivos, outra mede visitas autorizadas e a terceira envia registros técnicos para a equipe de operação.')
+    add_picture(doc,DIA/'integracoes.png',Inches(6.5),'Fluxo das integrações externas do MOVE.ON entre visitante, portal, Google Analytics, AWS S3, PostgreSQL e Collector OpenTelemetry.');caption(doc,'Figura 8 — Como as integrações externas se relacionam sem compartilhar responsabilidades ou segredos.')
+    figure_guide(doc,[
+      ('Pessoa visitante','Acessa o conteúdo, escolhe preferências de privacidade e recebe mídias públicas do portal.'),
+      ('Portal MOVE.ON','Aplica regras, valida configurações e impede que o navegador receba credenciais administrativas.'),
+      ('Google Analytics 4','Recebe somente eventos autorizados pela escolha de análise e desempenho.'),
+      ('AWS S3 privado','Guarda imagens e vídeos; a IAM Role autoriza a EC2, não o navegador do visitante.'),
+      ('Collector OTLP/HTTP','Recebe logs técnicos em lote para observabilidade interna.'),
+      ('PostgreSQL','Guarda configurações, metadados e versões criptografadas de segredos; não guarda os arquivos S3.')
+    ])
+
+    add_heading(doc,'7.3.1 Armazenamento: local ou AWS S3',3)
+    para(doc,'Armazenamento é o local físico ou lógico onde ficam imagens e vídeos. O PostgreSQL guarda informações como título, URL e relacionamento com a publicação, mas não deve receber o conteúdo binário de arquivos grandes. O MOVE.ON oferece dois modos para permitir uma implantação simples em uma única VPS e uma implantação escalável em nuvem.')
+    add_table(doc,['Modo','Quando usar','Vantagem principal','Responsabilidade operacional'],[
+      ('Storage local','Ambiente pequeno, homologação ou VPS única.','Configuração simples e sem serviço externo.','Fazer backup da pasta uploads e garantir espaço em disco.'),
+      ('AWS S3 / compatível','Produção, grande volume, vídeos, múltiplas instâncias ou CDN.','Escala, durabilidade e separação entre aplicação e mídia.','Configurar bucket, acesso IAM, retenção, custo e entrega pública controlada.')
+    ],[1700,2500,2400,2760],7.6)
+    para(doc,'Escolher S3 no painel não move automaticamente arquivos locais antigos. A migration 0021 converte URLs diretas do bucket privado para a rota segura do portal quando a configuração já contém o bucket, mas uma migração entre provedores deve sempre ser planejada e conferida antes de apagar a origem.')
+
+    add_heading(doc,'7.3.2 Campos do S3 explicados sem jargão',3)
+    add_table(doc,['Campo','O que significa','Exemplo ou orientação'],[
+      ('Modo','Escolhe se novos arquivos ficam na própria VPS ou em armazenamento de objetos.','AWS S3 / compatível para produção em EC2.'),
+      ('Endpoint S3','Endereço alternativo usado por MinIO, Cloudflare R2 ou outro provedor compatível.','Na AWS oficial, deixar vazio.'),
+      ('Região','Localidade AWS onde o bucket foi criado.','us-east-1, sa-east-1 etc. Deve ser exatamente a região do bucket.'),
+      ('Bucket','Nome único do recipiente de arquivos. Não é o texto de exemplo do campo.','moveon-portal-media-prod.'),
+      ('URL pública/CDN','Endereço opcional de CloudFront ou CDN usado pelos navegadores.','Deixar vazio enquanto o bucket privado for servido pelo backend.'),
+      ('Autenticação','Forma como o backend prova à AWS que possui permissão.','IAM Role na EC2 ou Access Key + Secret Key.'),
+      ('Forçar path-style','Formato antigo/compatível em que o bucket aparece no caminho da URL.','Desativado na AWS S3; ativar apenas se o provedor exigir.')
+    ],[1900,4000,3460],7.7)
+
+    add_heading(doc,'7.3.3 Modo recomendado: EC2 com IAM Role',3)
+    para(doc,'IAM Role é uma identidade temporária entregue pela AWS à máquina EC2. Ela elimina a necessidade de copiar Access Key e Secret Key para o painel ou para o arquivo .env. O SDK renova as credenciais temporárias automaticamente. Isso reduz o risco de vazamento e facilita a revogação centralizada.')
+    para(doc,'No dashboard, preencher assim: Modo = AWS S3 / compatível; Endpoint = vazio; Região = região real do bucket; Bucket = nome exato; URL pública/CDN = vazio enquanto não houver CDN; Autenticação = IAM Role / credenciais automáticas; Forçar path-style = desligado.')
+    para(doc,'A função vinculada à EC2 precisa confiar no serviço ec2.amazonaws.com e possuir somente as permissões necessárias. Exemplo de política; substitua NOME-DO-BUCKET pelo nome real:')
+    codeblock(doc,'''
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:ListBucket", "s3:GetBucketLocation"],
+      "Resource": "arn:aws:s3:::NOME-DO-BUCKET"
+    },
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:DeleteObject"],
+      "Resource": "arn:aws:s3:::NOME-DO-BUCKET/*"
+    }
+  ]
+}''')
+    para(doc,'Passo a passo na AWS: 1) abrir IAM e criar ou escolher uma Role para EC2; 2) anexar a política limitada ao bucket; 3) abrir EC2, selecionar a instância, usar Ações > Segurança > Modificar função do IAM; 4) escolher a Role; 5) aguardar a propagação; 6) reiniciar o serviço MOVE.ON; 7) testar um upload.')
+    para(doc,'Verificação na VPS usando IMDSv2. O primeiro comando obtém um token temporário da própria EC2; o segundo deve mostrar o nome da Role associada:')
+    codeblock(doc,'''
+TOKEN=$(curl -fsS -X PUT \
+  -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" \
+  http://169.254.169.254/latest/api/token)
+
+curl -fsS \
+  -H "X-aws-ec2-metadata-token: $TOKEN" \
+  http://169.254.169.254/latest/meta-data/iam/security-credentials/''')
+    para(doc,'Se aparecer “Could not load credentials from any providers”, o código tentou a cadeia padrão corretamente, mas a EC2 não forneceu uma identidade utilizável. Verifique se a Role está associada à instância certa, se a relação de confiança permite EC2, se o acesso ao serviço de metadados está habilitado e se a política cobre o bucket correto. Não resolva colocando chaves em código ou Git.')
+
+    add_heading(doc,'7.3.4 Modo alternativo: Access Key e Secret Key',3)
+    para(doc,'Esse modo existe para provedores compatíveis, servidores fora da AWS ou situações em que IAM Role não está disponível. O par deve pertencer a uma identidade dedicada, com permissão mínima e rotação periódica. Ao escolher o modo manual, clicar em Alterar credenciais e segredos, informar o par completo e salvar. Os valores são criptografados antes de ir ao PostgreSQL e não retornam ao navegador em consultas futuras.')
+    bullets(doc,['Nunca usar a Access Key de uma conta root da AWS.','Nunca incluir chaves no README, em capturas, logs, commits ou mensagens de suporte.','Se houver suspeita de vazamento, desativar a chave na AWS, criar outra e atualizar o painel.','Ao mudar para IAM Role, o backend remove as chaves manuais anteriormente armazenadas.'])
+
+    add_heading(doc,'7.3.5 Por que a URL direta do S3 pode mostrar 403',3)
+    para(doc,'Uma URL como https://bucket.s3.amazonaws.com/capas/arquivo.webp pode existir e ainda responder 403 Forbidden. Isso não significa necessariamente que o caminho está errado. Significa que o navegador do visitante não possui a IAM Role da EC2. A IAM Role autoriza o backend, não torna o bucket público.')
+    para(doc,'Quando URL pública/CDN fica vazia, o MOVE.ON grava e entrega novas mídias pela rota /api/portal/midias/:pasta/:arquivo. O backend valida a pasta e o nome, usa a IAM Role para ler o objeto e transmite o conteúdo com cache. Vídeos aceitam requisições Range, permitindo reprodução progressiva. A migration 0021 transforma URLs S3 antigas em URLs dessa rota segura.')
+    codeblock(doc,'''
+URL direta privada — pode responder 403:
+https://bucket.s3.amazonaws.com/capas/arquivo.webp
+
+URL entregue pelo portal:
+https://portal.exemplo.com/api/portal/midias/capas/arquivo.webp''')
+    para(doc,'Para tráfego elevado, a evolução recomendada é CloudFront ou outra CDN diante do bucket. Nesse cenário, configurar a distribuição com acesso privado à origem e informar o domínio da CDN em URL pública/CDN. Assim os visitantes recebem mídia pela borda, sem abrir escrita ou listagem pública no bucket e sem consumir a banda da EC2 para cada imagem.')
+
+    add_heading(doc,'7.3.6 Ciclo de vida e prevenção de arquivos órfãos',3)
+    para(doc,'Arquivo órfão é uma imagem ou vídeo que continua ocupando armazenamento depois que nenhuma publicação o utiliza. O MOVE.ON identifica capas, imagens sociais, imagens inseridas pelo CKEditor e vídeos gerenciados. Ao editar, mídias removidas do conteúdo são comparadas com a versão anterior. Ao excluir uma publicação, os arquivos são removidos antes do registro PostgreSQL.')
+    bullets(doc,['Capas são convertidas para WebP e geram JPEG social 1200 × 630.','Imagens internas usam upload exclusivo e são convertidas para WebP, sem criar capa social desnecessária.','Vídeos S3 mantêm formato validado MP4, WebM ou MOV.','A exclusão aceita URLs antigas diretas do S3, URLs da CDN configurada e URLs da rota privada do portal.','Se o S3 estiver indisponível durante a exclusão, a publicação permanece no banco para uma nova tentativa; isso evita informar sucesso enquanto o arquivo permanece órfão.'])
+
+    add_heading(doc,'7.3.7 Checklist de teste do armazenamento',3)
+    bullets(doc,['Salvar apenas o card Armazenamento e confirmar a mensagem de sucesso.','Enviar uma capa e verificar se existem objetos nas pastas capas e sociais.','Inserir uma imagem no conteúdo e verificar a pasta conteudos.','Enviar um vídeo e verificar a pasta videos.','Abrir a prévia, o dashboard e a publicação pública; nenhuma imagem deve aparecer quebrada.','Abrir a rota /api/portal/midias/... e confirmar HTTP 200; para vídeo, confirmar HTTP 206 ao usar Range.','Editar a publicação, remover uma mídia e verificar sua exclusão.','Excluir uma publicação de teste e confirmar que capa, social, imagens internas e vídeos foram removidos.'])
+
+    add_heading(doc,'7.3.8 Google Analytics 4: finalidade e privacidade',3)
+    para(doc,'Google Analytics 4, ou GA4, ajuda a responder perguntas como quantas pessoas visitaram o portal, quais páginas foram vistas e como a navegação evolui. Ele não substitui as métricas internas do MOVE.ON: o painel próprio usa eventos controlados no PostgreSQL; o GA4 é uma visão externa complementar.')
+    para(doc,'Por LGPD e pela política adotada, a tag não é carregada antes da autorização quando a gestão de consentimento está ativa. Isso significa que uma visita recusada não aparecerá no GA4. É um comportamento correto, não uma falha. O visitante pode aceitar tudo permitido, recusar opcionais ou personalizar Análise e desempenho, Preferências e Marketing.')
+    add_table(doc,['Campo','Como configurar','Efeito'],[
+      ('Habilitar Analytics','Ativar somente depois de criar o fluxo de dados Web no GA4.','Permite carregar a tag quando houver consentimento válido.'),
+      ('ID de medição','Informar o código iniciado por G-, por exemplo G-ABCDEFGHIJ.','Identifica para qual propriedade os eventos serão enviados.'),
+      ('Exibir gestão de consentimento','Manter ativo para apresentar escolhas ao visitante.','A tag permanece bloqueada até a decisão.'),
+      ('Análise e desempenho','Ativar para oferecer a escolha de medição.','Autoriza page_view quando o visitante aceitar.'),
+      ('Preferências','Ativar apenas se houver recursos opcionais que memorizem escolhas.','Registra a preferência declarada.'),
+      ('Marketing','Ativar somente com finalidade jurídica e operacional definida.','Não deve ser habilitado apenas para “ter mais dados”.')
+    ],[2000,4400,2960],7.7)
+    para(doc,'Passo a passo: 1) no Google Analytics, criar ou escolher uma propriedade GA4; 2) criar um fluxo de dados Web para o domínio oficial; 3) copiar o ID G-...; 4) no dashboard, habilitar Analytics, colar o ID, habilitar gestão de consentimento e Análise e desempenho; 5) clicar em Salvar Google Analytics; 6) abrir o portal em janela anônima, sem bloqueador de anúncios; 7) aceitar os permitidos; 8) navegar por páginas; 9) conferir o relatório em tempo real.')
+    para(doc,'A versão do consentimento inclui o estado do Analytics, o ID de medição e as permissões. Assim, ao ativar ou trocar a configuração, uma decisão antiga não é reutilizada silenciosamente. Após consentimento, o portal carrega gtag.js e envia page_view inicial e novas visualizações quando a URL muda.')
+    codeblock(doc,'''
+Verificações na aba Network do navegador:
+https://www.googletagmanager.com/gtag/js?id=G-...
+https://www.google-analytics.com/g/collect?...''')
+    para(doc,'Se o GA4 mostrar “Nenhum dado foi recebido”, conferir: ID sem erro de digitação; Analytics e Análise habilitados; consentimento aceito; teste em janela anônima; bloqueador de anúncios desativado; DNS/firewall permitindo Google; chamadas gtag/js e g/collect na aba Network. Relatórios consolidados podem demorar; para teste funcional, usar a visão em tempo real.')
+
+    add_heading(doc,'7.3.9 OpenTelemetry explicado para quem não é técnico',3)
+    para(doc,'OpenTelemetry é um padrão aberto para enviar sinais de operação. Nesta versão, o MOVE.ON exporta logs do backend: registros estruturados sobre requisições, status HTTP, duração e eventos relevantes. O Collector é um serviço da equipe de infraestrutura que recebe esses registros e pode encaminhá-los para ferramentas como Grafana, Loki, Elastic, Datadog ou outra plataforma compatível.')
+    para(doc,'A integração usa OTLP sobre HTTP. OTLP é o formato comum do OpenTelemetry; HTTP é o transporte. Para logs, o endereço deve terminar em /v1/logs. A porta convencional de OTLP/HTTP é 4318. A porta 4317 normalmente representa OTLP/gRPC e não deve ser usada neste campo.')
+    add_table(doc,['Campo','Explicação simples','Exemplo'],[
+      ('Habilitar exportação','Liga o envio em lote. Se desligado, a API continua funcionando sem exportar.','Ativo em produção quando houver Collector.'),
+      ('Endpoint OTLP','Endereço completo que recebe logs HTTP.','https://collector.exemplo.com:4318/v1/logs'),
+      ('Nome do serviço','Etiqueta para localizar os logs do portal entre vários sistemas.','moveon-portal'),
+      ('Nível mínimo','Define a menor importância enviada.','Info em produção; Debug temporariamente em diagnóstico.'),
+      ('Cabeçalhos OTLP','Informações extras exigidas pelo Collector, como autenticação ou tenant.','Authorization: Bearer TOKEN')
+    ],[1900,4300,3160],7.7)
+    add_heading(doc,'7.3.10 Níveis de log',3)
+    add_table(doc,['Nível','Significado','Uso recomendado'],[
+      ('Debug','Detalhe fino para investigação. Pode gerar grande volume.','Ativar por período curto durante diagnóstico.'),
+      ('Info','Operação normal: requisições concluídas e eventos de configuração.','Padrão recomendado para produção.'),
+      ('Warning','Situação inesperada que não interrompeu completamente o serviço.','Monitorar tendência e corrigir causas recorrentes.'),
+      ('Error','Falha grave ou resposta HTTP 5xx.','Gerar alerta e investigação prioritária.')
+    ],[1500,4500,3360],8)
+    para(doc,'O filtro funciona por ordem de gravidade. Se o mínimo for Warning, logs Debug e Info não são enviados. Se o mínimo for Debug, todos os níveis são enviados, aumentando volume, custo e ruído.')
+
+    add_heading(doc,'7.3.11 Cabeçalhos OTLP e proteção de segredos',3)
+    para(doc,'Cada cabeçalho deve ocupar uma linha no formato Nome: valor. O painel bloqueia edição por padrão; clicar em Alterar cabeçalhos protegidos antes de modificar. Valores são criptografados no PostgreSQL e a API administrativa retorna apenas a indicação de que existem cabeçalhos configurados.')
+    codeblock(doc,'''
+Authorization: Bearer SEU_TOKEN
+X-Scope-OrgID: moveon''')
+    para(doc,'Cabeçalhos vazios, malformados ou perigosos, como Host, Content-Length, Connection, Transfer-Encoding e Cookie, são recusados. Não copie tokens para documentação, prints ou chamados. Para trocar um token, gere outro no sistema de observabilidade, salve no painel e revogue o anterior.')
+
+    add_heading(doc,'7.3.12 Como salvar e testar OpenTelemetry',3)
+    para(doc,'Ao clicar em Salvar OpenTelemetry com a exportação ativa, o backend persiste a configuração, reinicializa o provedor e realiza uma entrega OTLP real. O teste envia um log informativo chamado opentelemetry_conexao_verificada, com o atributo moveon.verificacao=true. Somente uma resposta HTTP 2xx é considerada sucesso.')
+    para(doc,'O botão Testar conexão OTLP repete a prova sem alterar campos. Ele mostra o status HTTP e a duração, por exemplo: “Log entregue com sucesso (HTTP 200, 84 ms)”. Procure o registro no destino filtrando service.name=moveon-portal e o corpo opentelemetry_conexao_verificada.')
+    codeblock(doc,'''
+Endpoint correto:
+https://collector.exemplo.com:4318/v1/logs
+
+Mensagem esperada no painel:
+Configuração salva e entrega OTLP confirmada.''')
+    para(doc,'Os logs normais são processados em lote para reduzir consumo de rede e CPU. Desabilitar a exportação encerra o provedor de forma controlada. Se o Collector ficar indisponível depois da configuração, a API continua atendendo usuários; a observabilidade não deve derrubar o portal.')
+
+    add_heading(doc,'7.3.13 Diagnóstico do OpenTelemetry',3)
+    add_table(doc,['Sintoma','Causa provável','Como corrigir'],[
+      ('Endpoint deve terminar com /v1/logs','Foi usada a raiz do Collector ou endpoint gRPC.','Usar a URL OTLP/HTTP completa, geralmente porta 4318 + /v1/logs.'),
+      ('HTTP 401 ou 403','Token ausente, inválido ou sem permissão.','Revisar Authorization e permissões no Collector.'),
+      ('HTTP 404','Caminho incorreto ou receiver OTLP HTTP desativado.','Ativar receiver otlp/http e conferir /v1/logs.'),
+      ('HTTP 429','Collector ou destino aplicou limite de ingestão.','Reduzir Debug, revisar capacidade e políticas de lote.'),
+      ('HTTP 5xx','Collector recebeu a chamada, mas falhou internamente.','Consultar logs do Collector e do backend de observabilidade.'),
+      ('Timeout após 10 segundos','Rede, DNS, firewall, proxy ou Collector indisponível.','Testar conectividade a partir da VPS e liberar saída/entrada necessárias.'),
+      ('Teste funciona, mas não encontro o log','Pipeline posterior filtrou, transformou ou enviou a outro tenant.','Buscar por service.name, corpo do teste e X-Scope-OrgID; revisar exporters do Collector.')
+    ],[2200,3300,3860],7.5)
+    para(doc,'Exemplo mínimo de Collector para receber OTLP/HTTP e escrever no próprio console. É apenas uma referência de laboratório; em produção, a equipe interna deve configurar autenticação, TLS, filas e o exporter corporativo:')
+    codeblock(doc,'''
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+exporters:
+  debug:
+    verbosity: detailed
+
+service:
+  pipelines:
+    logs:
+      receivers: [otlp]
+      exporters: [debug]''')
+    add_heading(doc,'7.3.14 Checklist operacional das integrações',3)
+    add_table(doc,['Integração','Antes de ativar','Prova de funcionamento','Plano de recuperação'],[
+      ('S3','Bucket, região, IAM Role/política e estratégia de entrega.','Upload, HTTP 200 pela rota do portal, edição e exclusão testadas.','Voltar temporariamente ao local para novos uploads sem apagar o bucket; corrigir IAM.'),
+      ('Google Analytics','Propriedade, fluxo Web, ID G-..., texto jurídico e consentimento.','Aceitar em janela anônima e observar gtag/js, g/collect e tempo real.','Desabilitar Analytics; o portal continua e as métricas internas permanecem.'),
+      ('OpenTelemetry','Collector OTLP/HTTP, /v1/logs, TLS, token, tenant e retenção.','Botão de teste retorna HTTP 2xx e log aparece pelo service.name.','Desabilitar exportação; investigar Collector sem interromper o portal.')
+    ],[1700,2900,2900,1860],7.4)
+
     add_heading(doc,'8. Variáveis de ambiente',1)
     section_intro(doc,'Centralizar configuração mutável e separar segredos do código.','Catálogo completo, finalidade, impacto operacional e cuidados de produção.')
-    para(doc,'Todas as variáveis configuráveis e sensíveis ficam em .env. O arquivo .env.example documenta chaves sem expor valores reais. Segredos nunca devem ser incluídos em logs, commits ou documentação compartilhada.')
+    para(doc,'As configurações operacionais de inicialização ficam em .env. O arquivo .env.example documenta chaves sem expor valores reais. Segredos nunca devem ser incluídos em logs, commits ou documentação compartilhada. As integrações que o administrador altera pelo Dashboard — Storage, Google Analytics e OpenTelemetry — ficam no PostgreSQL; valores realmente secretos, como chaves manuais do S3 e cabeçalhos OTLP, são armazenados criptografados e nunca retornam em texto aberto ao navegador. Quando o S3 usa IAM Role, não existe Access Key ou Secret Key no .env: a própria EC2 fornece credenciais temporárias e rotativas à aplicação.')
     add_table(doc,['Variável','Finalidade e importância'],ENV,[2750,6610],8)
 
     add_heading(doc,'9. Estrutura do projeto',1)
     section_intro(doc,'Orientar desenvolvedores sobre onde localizar e alterar cada responsabilidade.','Pastas, módulos, fluxo de execução e fronteiras de manutenção.')
-    structure=[('app/','Rotas e fronteiras React/Vinext; portal, admin, artigo, SEO, robots e sitemap.'),('backend/configuracoes/','Validação central do ambiente.'),('backend/compartilhado/','Cookies, autenticação obrigatória, erros, criptografia e sanitização.'),('backend/infraestrutura/banco/','Pool, migrations e semente.'),('backend/modulos/autenticacao/','Login, sessão, limite e persistência.'),('backend/modulos/painel/','CRUD, métricas, configurações, uploads e administrador.'),('backend/modulos/portal/','Feed, FTS, artigos, eventos e inscrições.'),('backend/modulos/newsletter/','Fila, SMTP e cancelamento.'),('backend/modulos/saude/','Health check.'),('migrations/','Evolução incremental do PostgreSQL.'),('scripts/','Instalação, migration e seed.'),('uploads/','Arquivos gerenciados por tipo.'),('public/','Logo, favicon e imagem social padrão.'),('documentacao/','Artefatos, diagramas, capturas e documento final.')]
+    structure=[('app/','Rotas e fronteiras React/Vinext; portal, admin, artigo, SEO, robots e sitemap.'),('backend/configuracoes/','Validação central do ambiente.'),('backend/compartilhado/','Cookies, autenticação obrigatória, erros, criptografia e sanitização.'),('backend/infraestrutura/banco/','Pool, migrations e semente.'),('backend/infraestrutura/observabilidade/','Logs estruturados e exportação OpenTelemetry por OTLP/HTTP.'),('backend/modulos/autenticacao/','Login, sessão, limite e persistência.'),('backend/modulos/integracoes/','Configuração independente de Storage, GA4, consentimento e OpenTelemetry.'),('backend/modulos/painel/','CRUD, métricas, configurações, uploads e administrador.'),('backend/modulos/portal/','Feed, FTS, artigos, eventos, mídia privada e inscrições.'),('backend/modulos/newsletter/','Fila, SMTP e cancelamento.'),('backend/modulos/saude/','Health check.'),('migrations/','Evolução incremental do PostgreSQL.'),('scripts/','Instalação, migration e seed.'),('uploads/','Arquivos gerenciados por tipo no modo local.'),('public/','Logo, favicon e imagem social padrão.'),('documentacao/','Artefatos, diagramas, capturas e documento final.')]
     add_table(doc,['Caminho','Responsabilidade'],structure,[3000,6360],8)
     add_heading(doc,'9.1 Fluxo de execução',2);bullets(doc,['npm run dev inicia portal e API simultaneamente.','A API abre pool PostgreSQL e worker periódico da newsletter.','Vite encaminha /api e /uploads para a API no desenvolvimento.','Docker Compose mantém PostgreSQL em volume nomeado.','migrar.ts aplica somente migrations ainda não registradas.','semear.ts atualiza dados iniciais de forma repetível.'])
 
     add_heading(doc,'10. Rotas e contratos HTTP',1)
     section_intro(doc,'Catalogar a superfície da API e seus requisitos de acesso.','Métodos, caminhos, autenticação, finalidade, respostas e regras transversais.')
-    endpoints=[('GET','/api/saude','Público','Saúde e banco'),('POST','/api/autenticacao/entrar','Público','Cria sessão'),('GET','/api/autenticacao/sessao','Cookie','Consulta sessão'),('POST','/api/autenticacao/sair','Cookie','Revoga sessão'),('GET','/api/portal/inicial','Público','Configuração, categorias e lote'),('GET','/api/portal/publicacoes','Público','FTS/categoria/cursor'),('GET','/api/portal/publicacoes/:slug','Público','Artigo publicado'),('POST','/api/portal/eventos','Público','Métrica validada'),('POST','/api/portal/newsletter','Público','Inscrição'),('GET','/api/portal/newsletter/cancelar','Token','Cancelamento'),('GET/POST/PUT/DELETE','/api/painel/publicacoes','Admin','CRUD'),('GET/POST/PUT/DELETE','/api/painel/categorias','Admin','CRUD'),('POST','/api/painel/uploads/capas','Admin','Capa otimizada'),('POST','/api/painel/uploads/perfil','Admin','Perfil otimizado'),('GET','/api/painel/metricas','Admin','Métricas'),('GET/PUT','/api/painel/configuracoes','Admin','Identidade'),('GET/PUT','/api/painel/administrador','Admin','Perfil/segurança'),('GET/DELETE','/api/painel/newsletter','Admin','Inscritos'),('GET/PUT','/api/painel/newsletter-modelo','Admin','Modelo')]
+    endpoints=[('GET','/api/saude','Público','Saúde e banco'),('POST','/api/autenticacao/entrar','Público','Cria sessão'),('GET','/api/autenticacao/sessao','Cookie','Consulta sessão'),('POST','/api/autenticacao/sair','Cookie','Revoga sessão'),('GET','/api/portal/inicial','Público','Configuração, categorias e lote'),('GET','/api/portal/publicacoes','Público','FTS/categoria/cursor'),('GET','/api/portal/publicacoes/:slug','Público','Artigo publicado'),('GET','/api/portal/midias/:pasta/:arquivo','Público controlado','Entrega objeto privado do S3'),('GET','/api/portal/privacidade/configuracao','Público','Preferências e texto de consentimento'),('POST','/api/portal/privacidade/consentimento','Público','Registra escolha do visitante'),('POST','/api/portal/eventos','Público','Métrica validada'),('POST','/api/portal/newsletter','Público','Inscrição'),('GET','/api/portal/newsletter/cancelar','Token','Cancelamento'),('GET/POST/PUT/DELETE','/api/painel/publicacoes','Admin','CRUD'),('GET/POST/PUT/DELETE','/api/painel/categorias','Admin','CRUD'),('POST','/api/painel/uploads/capas','Admin','Capa otimizada'),('POST','/api/painel/uploads/conteudo','Admin','Imagem/vídeo do editor'),('POST','/api/painel/uploads/perfil','Admin','Perfil otimizado'),('GET','/api/painel/metricas','Admin','Métricas'),('GET/PUT','/api/painel/configuracoes','Admin','Identidade'),('GET/PUT','/api/painel/administrador','Admin','Perfil/segurança'),('GET/DELETE','/api/painel/newsletter','Admin','Inscritos'),('GET/PUT','/api/painel/newsletter-modelo','Admin','Modelo'),('GET','/api/painel/integracoes','Admin','Consulta integrações sem revelar segredos'),('PUT','/api/painel/integracoes/armazenamento','Admin','Salva apenas Storage'),('PUT','/api/painel/integracoes/analytics','Admin','Salva apenas GA4/consentimento'),('PUT','/api/painel/integracoes/otel','Admin','Salva apenas OpenTelemetry'),('POST','/api/painel/integracoes/otel/testar','Admin','Teste real do Collector')]
     add_table(doc,['Método','Rota','Acesso','Finalidade'],endpoints,[1350,3700,1300,3010],7.5)
     add_heading(doc,'10.1 Regras transversais dos contratos',2)
     bullets(doc,['Todas as rotas administrativas passam por exigirAutenticacao.','Corpos JSON respeitam LIMITE_CORPO_JSON e validação estrita.','Uploads usam multipart, um arquivo por requisição e limite configurado.','Erros retornam mensagem pública sem detalhes internos ou credenciais.','Listagens públicas usam limite máximo e cursor; newsletter administrativa usa paginação.','Conteúdo público recebe cabeçalhos de cache coerentes; sessão e busca dinâmica usam no-store.'])
@@ -389,7 +583,7 @@ def build():
     add_heading(doc,'11. Catálogo de classes e funções',1);para(doc,'Esta seção relaciona os elementos executáveis relevantes. Métodos CRUD individuais aparecem nas classes de controle e repositório; funções de interface aparecem como fronteiras.')
     section_intro(doc,'Permitir localizar rapidamente a regra responsável por cada comportamento.','Funções compartilhadas, classes backend, componentes frontend e efeitos colaterais.')
     add_table(doc,['Função/módulo','Descrição'],FUNCTIONS,[3100,6260],8)
-    detailed=[('RepositorioPainel','resumo; listar/obter/salvar/excluir publicações; listar/criar/atualizar/excluir categorias; metricas; configurações; administrador; newsletter. salvarPublicacao e atualizarAdministrador usam transações.'),('ControladorPainel','enviarCapa; enviarFotoPerfil; resumo; CRUD de publicações/categorias; métricas; configurações; administrador; lista/modelo newsletter. Higieniza conteúdo e coordena arquivos/fila.'),('RepositorioPortal','inicial; listarPublicacoes com FTS/cursor; obterPublicacaoPorSlug; registrarEvento; newsletter.'),('RepositorioAutenticacao','buscar por e-mail/token; registrar acesso; criar e revogar sessão.'),('ServicoAutenticacao','autenticar; obterAdministrador; encerrarSessao.'),('ControladorAutenticacao','entrar; consultarSessao; sair.'),('ServicoNewsletter','publicarAgendadas; enfileirar; processar; tokenCancelamento; idTokenValido.'),('Fronteiras React','ModalGlobal; Login; Portal; InscricaoNewsletter; Painel; Inicio; Grafico; Publicacoes; EditorRico; Editor; Categorias; Metricas; Configuracao; DadosAdmin; PainelNewsletter; Compartilhamento.')]
+    detailed=[('RepositorioPainel','resumo; listar/obter/salvar/excluir publicações; listar/criar/atualizar/excluir categorias; metricas; configurações; administrador; newsletter. salvarPublicacao e atualizarAdministrador usam transações.'),('ControladorPainel','enviarCapa; enviarFotoPerfil; resumo; CRUD de publicações/categorias; métricas; configurações; administrador; lista/modelo newsletter. Higieniza conteúdo e coordena arquivos/fila.'),('RepositorioIntegracoes','obter; salvarArmazenamento; salvarAnalytics; salvarOpenTelemetry. Usa casts SQL explícitos, mantém segredos existentes quando o campo protegido não é reaberto e salva cada serviço de forma independente.'),('ControladorIntegracoes','obter; atualizarArmazenamento; atualizarAnalytics; atualizarOpenTelemetry; testarOpenTelemetry. Converte erros de validação em mensagens por campo e não devolve credenciais.'),('ArmazenamentoObjetos','enviar; abrir fluxo; obter URL; excluir. Seleciona local ou S3, usa cadeia padrão da AWS para IAM Role e remove objeto ao excluir conteúdo gerenciado.'),('ExportadorOpenTelemetry','configurar; registrar; flush; encerrar; testar. Monta lotes, respeita nível mínimo, faz timeout e evita recursão quando o próprio exportador falha.'),('RepositorioPortal','inicial; listarPublicacoes com FTS/cursor; obterPublicacaoPorSlug; resolverMidiaPrivada; registrarEvento; newsletter.'),('RepositorioAutenticacao','buscar por e-mail/token; registrar acesso; criar e revogar sessão.'),('ServicoAutenticacao','autenticar; obterAdministrador; encerrarSessao.'),('ControladorAutenticacao','entrar; consultarSessao; sair.'),('ServicoNewsletter','publicarAgendadas; enfileirar; processar; tokenCancelamento; idTokenValido.'),('Fronteiras React','ModalGlobal; Login; Portal; InscricaoNewsletter; Painel; PainelIntegracoes; Inicio; Grafico; Publicacoes; EditorRico; Editor; Categorias; Metricas; Configuracao; DadosAdmin; PainelNewsletter; Compartilhamento.')]
     add_table(doc,['Classe/grupo','Métodos e comportamento'],detailed,[2600,6760],8)
 
     add_heading(doc,'12. Operação, testes e manutenção',1)
@@ -400,12 +594,12 @@ def build():
 
     add_heading(doc,'13. Matriz de rastreabilidade',1)
     section_intro(doc,'Relacionar necessidades do produto às decisões e arquivos que as implementam.','Necessidade, mecanismo técnico e localização de referência.')
-    trace=[('Busca precisa','documento_busca + GIN + websearch_to_tsquery','0007 / RepositorioPortal'),('Escala do feed','cursor + limite + IntersectionObserver','RepositorioPortal / Portal'),('SEO','slug, metadata, JSON-LD, sitemap, robots','0006 / app/publicacao'),('Métricas reais','hashes, filtros e unicidade diária','0003 / eventos_acesso'),('Segurança de sessão','token hash, cookie e revogação global','autenticacao / painel'),('Mídia leve','Sharp, WebP/JPEG, lazy/async','armazenamento-capas / sanitização'),('Newsletter','inscrição, fila, SMTP e HMAC','0005 / ServicoNewsletter'),('Configuração','env validado e configuração persistida','ambiente / configuracoes_portal')]
+    trace=[('Busca precisa','documento_busca + GIN + websearch_to_tsquery','0007 / RepositorioPortal'),('Escala do feed','cursor + limite + IntersectionObserver','RepositorioPortal / Portal'),('SEO','slug, metadata, JSON-LD, sitemap, robots','0006 / app/publicacao'),('Métricas reais','hashes, filtros e unicidade diária','0003 / eventos_acesso'),('Segurança de sessão','token hash, cookie e revogação global','autenticacao / painel'),('Mídia leve','Sharp, WebP/JPEG, lazy/async','armazenamento-capas / sanitização'),('Storage escalável','S3, IAM Role, mídia privada e exclusão de órfãos','integracoes / armazenamento-objetos / portal'),('Analytics com privacidade','GA4 carregado após consentimento por categoria','PainelIntegracoes / portal / privacidade'),('Observabilidade','OTLP/HTTP em lote, níveis e teste real','observabilidade / integracoes'),('Newsletter','inscrição, fila, SMTP e HMAC','0005 / ServicoNewsletter'),('Configuração','env validado e configuração persistida','ambiente / configuracoes_portal')]
     add_table(doc,['Necessidade','Mecanismo','Implementação'],trace,[2200,4100,3060],8)
 
     add_heading(doc,'14. Glossário',1)
     section_intro(doc,'Uniformizar o vocabulário usado no código e neste manual.','Termos de busca, desempenho, sessão, SEO e segurança.')
-    terms=[('FTS','Full-Text Search; indexação linguística de documentos.'),('GIN','Índice invertido do PostgreSQL adequado a tsvector.'),('Cursor','Marcador opaco do último item para paginação.'),('SSR','Renderização no servidor; importante para SEO e crawlers sociais.'),('Open Graph','Metadados usados em prévias de links.'),('JSON-LD','Dados estruturados serializados em JSON.'),('HMAC','Assinatura autenticada usada no cancelamento da newsletter.'),('HttpOnly','Cookie inacessível ao JavaScript.'),('SameSite','Restrição de envio de cookie entre sites.'),('LCP','Largest Contentful Paint; métrica de carregamento visual.')]
+    terms=[('FTS','Full-Text Search; indexação linguística de documentos.'),('GIN','Índice invertido do PostgreSQL adequado a tsvector.'),('Cursor','Marcador opaco do último item para paginação.'),('SSR','Renderização no servidor; importante para SEO e crawlers sociais.'),('Open Graph','Metadados usados em prévias de links.'),('JSON-LD','Dados estruturados serializados em JSON.'),('HMAC','Assinatura autenticada usada no cancelamento da newsletter.'),('HttpOnly','Cookie inacessível ao JavaScript.'),('SameSite','Restrição de envio de cookie entre sites.'),('LCP','Largest Contentful Paint; métrica de carregamento visual.'),('S3','Serviço de armazenamento de objetos; guarda arquivos fora do disco da aplicação.'),('Bucket','Contêiner lógico do S3, semelhante a uma pasta principal com políticas próprias.'),('IAM Role','Identidade atribuída à EC2 que fornece credenciais temporárias sem senha fixa no código.'),('CDN','Rede que aproxima cópias de arquivos dos visitantes e reduz latência e tráfego na aplicação.'),('GA4','Google Analytics 4; serviço de métricas de navegação.'),('Consentimento','Escolha registrada do visitante sobre categorias de tratamento e medição.'),('OpenTelemetry','Padrão aberto para produzir e transportar logs, métricas e rastros.'),('OTLP','Protocolo do OpenTelemetry usado para enviar telemetria.'),('Collector','Serviço intermediário que recebe OTLP e encaminha para a plataforma de observabilidade.'),('IMDSv2','Serviço seguro de metadados da EC2 usado pelo SDK para obter a IAM Role.')]
     add_table(doc,['Termo','Definição'],terms,[1800,7560],8)
     para(doc,'Fim da documentação. Este documento descreve o estado implementado na data de referência. Qualquer alteração de schema, rota, variável ou fluxo deve atualizar simultaneamente migrations, .env.example, README e esta documentação.')
     OUT.parent.mkdir(parents=True,exist_ok=True);doc.save(OUT);print(OUT)

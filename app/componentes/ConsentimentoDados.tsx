@@ -19,39 +19,86 @@ type Escolhas = {
   marketing: boolean;
 };
 const padrao = { analytics: false, preferencias: false, marketing: false };
-function carregarAnalytics(id: string) {
-  if (!id || document.querySelector(`script[data-ga-id="${id}"]`)) return;
+type EstadoAnalytics = "inativo" | "carregando" | "ativo" | "bloqueado";
+function informarEstadoAnalytics(estado: EstadoAnalytics, detalhe?: string) {
+  window.analyticsMoveonEstado = { estado, detalhe };
+  document.documentElement.dataset.analytics = estado;
+  window.dispatchEvent(
+    new CustomEvent("moveon:analytics", { detail: window.analyticsMoveonEstado }),
+  );
+}
+function prepararGtag() {
+  window.dataLayer = window.dataLayer || [];
+  window.gtag ??= (...argumentos: unknown[]) =>
+    window.dataLayer!.push(argumentos);
+}
+function registrarPagina() {
+  window.gtag?.("event", "page_view", {
+    page_location: window.location.href,
+    page_path: `${window.location.pathname}${window.location.search}`,
+    page_title: document.title,
+  });
+}
+function carregarAnalytics(idInformado: string) {
+  const id = idInformado.trim().toUpperCase();
+  if (!/^G-[A-Z0-9]{5,20}$/.test(id)) {
+    informarEstadoAnalytics("bloqueado", "ID de medição inválido.");
+    return;
+  }
+  prepararGtag();
+  window.gtag?.("consent", "update", { analytics_storage: "granted" });
+  const existente = document.querySelector<HTMLScriptElement>(
+    `script[data-ga-id="${id}"]`,
+  );
+  if (existente) {
+    informarEstadoAnalytics("ativo");
+    registrarPagina();
+    return;
+  }
+  informarEstadoAnalytics("carregando");
   const s = document.createElement("script");
   s.async = true;
   s.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(id)}`;
   s.dataset.gaId = id;
+  s.referrerPolicy = "strict-origin-when-cross-origin";
+  s.addEventListener("load", () => {
+    informarEstadoAnalytics("ativo");
+    registrarPagina();
+  });
+  s.addEventListener("error", () => {
+    informarEstadoAnalytics(
+      "bloqueado",
+      "A tag do Google foi bloqueada pelo navegador, extensão ou política de rede.",
+    );
+  });
   document.head.appendChild(s);
-  window.dataLayer = window.dataLayer || [];
-  window.gtag = (...argumentos: unknown[]) => window.dataLayer!.push(argumentos);
-  window.gtag("js", new Date());
-  window.gtag("config", id, {
+  window.gtag?.("js", new Date());
+  window.gtag?.("config", id, {
     anonymize_ip: true,
     send_page_view: false,
   });
-  const visualizarPagina = () =>
-    window.gtag?.("event", "page_view", {
-      page_location: window.location.href,
-      page_path: `${window.location.pathname}${window.location.search}`,
-      page_title: document.title,
-    });
-  visualizarPagina();
   let enderecoAnterior = window.location.href;
   window.analyticsMoveonMonitor ??= window.setInterval(() => {
     if (window.location.href === enderecoAnterior) return;
     enderecoAnterior = window.location.href;
-    visualizarPagina();
+    registrarPagina();
   }, 500);
+}
+function desativarAnalytics() {
+  prepararGtag();
+  window.gtag?.("consent", "update", { analytics_storage: "denied" });
+  if (window.analyticsMoveonMonitor) {
+    window.clearInterval(window.analyticsMoveonMonitor);
+    delete window.analyticsMoveonMonitor;
+  }
+  informarEstadoAnalytics("inativo");
 }
 declare global {
   interface Window {
     dataLayer?: unknown[];
     gtag?: (...args: unknown[]) => void;
     analyticsMoveonMonitor?: number;
+    analyticsMoveonEstado?: { estado: EstadoAnalytics; detalhe?: string };
   }
 }
 export default function ConsentimentoDados() {
@@ -61,6 +108,15 @@ export default function ConsentimentoDados() {
     [escolhas, setEscolhas] = useState<Escolhas>(padrao);
   useEffect(() => {
     if (window.location.pathname.startsWith("/admin")) return;
+    prepararGtag();
+    window.gtag?.("consent", "default", {
+      analytics_storage: "denied",
+      ad_storage: "denied",
+      ad_user_data: "denied",
+      ad_personalization: "denied",
+      wait_for_update: 500,
+    });
+    informarEstadoAnalytics("inativo");
     fetch("/api/portal/privacidade/configuracao")
       .then(async (r) => (await r.json()) as Config)
       .then((c) => {
@@ -97,6 +153,7 @@ export default function ConsentimentoDados() {
     setAberto(false);
     if (permitido.analytics && cfg.analyticsAtivo)
       carregarAnalytics(cfg.analyticsIdMedicao);
+    else desativarAnalytics();
     await fetch("/api/portal/privacidade/consentimento", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
