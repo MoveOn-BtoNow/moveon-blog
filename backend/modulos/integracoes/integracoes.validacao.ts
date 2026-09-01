@@ -6,6 +6,7 @@ export const esquemaIntegracoes = z
     s3Endpoint: urlOuVazio,
     s3Regiao: z.string().trim().min(2).max(100),
     s3Bucket: z.string().trim().max(255),
+    s3Autenticacao: z.enum(["iam_role", "chaves"]),
     s3ChaveAcesso: z.string().max(500),
     s3ChaveSecreta: z.string().max(500),
     s3UrlPublica: urlOuVazio,
@@ -28,6 +29,13 @@ export const esquemaIntegracoes = z
     otelCabecalhos: z.string().max(4000),
     otelNomeServico: z.string().trim().min(2).max(120),
     otelNivelMinimo: z.enum(["debug", "info", "warn", "error"]),
+  })
+  .superRefine((dados, contexto) => {
+    if (dados.armazenamentoModo !== "s3") return;
+    if (!dados.s3Bucket)
+      contexto.addIssue({ code: "custom", path: ["s3Bucket"], message: "Informe o bucket." });
+    if (Boolean(dados.s3ChaveAcesso) !== Boolean(dados.s3ChaveSecreta))
+      contexto.addIssue({ code: "custom", path: ["s3ChaveSecreta"], message: "Informe Access Key e Secret Key juntas." });
   })
   .strict();
 export const esquemaConsentimento = z

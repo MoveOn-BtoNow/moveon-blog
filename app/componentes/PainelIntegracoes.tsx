@@ -6,6 +6,7 @@ type C = {
   s3Endpoint: string;
   s3Regiao: string;
   s3Bucket: string;
+  s3Autenticacao: "iam_role" | "chaves";
   s3ChaveAcesso: string;
   s3ChaveSecreta: string;
   s3UrlPublica: string;
@@ -58,6 +59,7 @@ export default function PainelIntegracoes() {
       s3Endpoint: f.s3Endpoint,
       s3Regiao: f.s3Regiao,
       s3Bucket: f.s3Bucket,
+      s3Autenticacao: f.s3Autenticacao,
       s3ChaveAcesso: f.s3ChaveAcesso,
       s3ChaveSecreta: f.s3ChaveSecreta,
       s3UrlPublica: f.s3UrlPublica,
@@ -139,46 +141,65 @@ export default function PainelIntegracoes() {
                 set={(v) => a("s3UrlPublica", v)}
                 p="https://cdn.exemplo.com"
               />
-              <Campo
-                n="Access Key"
-                v={f.s3ChaveAcesso}
-                set={(v) => a("s3ChaveAcesso", v)}
-                p={
-                  f.s3CredenciaisConfiguradas
-                    ? "Credencial configurada"
-                    : "Access Key"
-                }
-                senha
-                desativado={!editar}
-              />
-              <Campo
-                n="Secret Key"
-                v={f.s3ChaveSecreta}
-                set={(v) => a("s3ChaveSecreta", v)}
-                p={
-                  f.s3CredenciaisConfiguradas
-                    ? "Credencial configurada"
-                    : "Secret Key"
-                }
-                senha
-                desativado={!editar}
-              />
+              <label>
+                Autenticação no S3
+                <select
+                  value={f.s3Autenticacao}
+                  onChange={(e) =>
+                    a("s3Autenticacao", e.target.value as C["s3Autenticacao"])
+                  }
+                >
+                  <option value="iam_role">IAM Role / credenciais automáticas</option>
+                  <option value="chaves">Access Key e Secret Key</option>
+                </select>
+              </label>
+              {f.s3Autenticacao === "chaves" && (
+                <>
+                  <Campo
+                    n="Access Key"
+                    v={f.s3ChaveAcesso}
+                    set={(v) => a("s3ChaveAcesso", v)}
+                    p={
+                      f.s3CredenciaisConfiguradas
+                        ? "Credencial configurada"
+                        : "Access Key"
+                    }
+                    senha
+                    desativado={!editar}
+                  />
+                  <Campo
+                    n="Secret Key"
+                    v={f.s3ChaveSecreta}
+                    set={(v) => a("s3ChaveSecreta", v)}
+                    p={
+                      f.s3CredenciaisConfiguradas
+                        ? "Credencial configurada"
+                        : "Secret Key"
+                    }
+                    senha
+                    desativado={!editar}
+                  />
+                </>
+              )}
             </div>
             <Toggle
               n="Forçar path-style"
               v={f.s3ForcarPathStyle}
               set={(v) => a("s3ForcarPathStyle", v)}
             />
-            <button
-              type="button"
-              className="habilitar-servidor-email"
-              onClick={() => setEditar((v) => !v)}
-            >
-              {editar ? "Bloquear segredos" : "Alterar credenciais e segredos"}
-            </button>
+            {f.s3Autenticacao === "chaves" && (
+              <button
+                type="button"
+                className="habilitar-servidor-email"
+                onClick={() => setEditar((v) => !v)}
+              >
+                {editar ? "Bloquear segredos" : "Alterar credenciais e segredos"}
+              </button>
+            )}
             <small>
-              Novos uploads usarão o modo selecionado. O PostgreSQL guarda
-              apenas metadados e URLs.
+              {f.s3Autenticacao === "iam_role"
+                ? "A aplicação usará automaticamente a IAM Role associada à EC2. Para arquivos privados, configure uma URL pública/CDN com acesso autorizado."
+                : "As chaves são criptografadas antes de serem armazenadas. O PostgreSQL guarda apenas metadados e URLs dos arquivos."}
             </small>
           </>
         )}
