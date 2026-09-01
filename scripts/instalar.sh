@@ -31,15 +31,15 @@ DOMINIO="${URL_PLATAFORMA#*://}"; DOMINIO="${DOMINIO%%:*}"
 HTTPS=false; [[ "$URL_PLATAFORMA" == https://* ]] && HTTPS=true
 AMBIENTE_LOCAL=false; [[ "$DOMINIO" == "localhost" || "$DOMINIO" == "127.0.0.1" ]] && AMBIENTE_LOCAL=true
 EMAIL_CERTIFICADO="${2:-contato@$DOMINIO}"
-PROXY_EXTERNO=false
+TIPO_PROXY="nginx"
 if ! $AMBIENTE_LOCAL; then
   PORTAS_PUBLICAS="$($SUDO ss -ltnp '( sport = :80 or sport = :443 )' 2>/dev/null || true)"
-  OUTROS_PROXY="$(printf '%s\n' "$PORTAS_PUBLICAS" | sed '1d' | sed '/^[[:space:]]*$/d' | grep -v 'nginx' || true)"
-  if [[ -n "$OUTROS_PROXY" ]]; then
-    PROXY_EXTERNO=true
-    echo "Proxy externo detectado nas portas 80/443; ele será preservado:"
-    printf '%s\n' "$OUTROS_PROXY"
-  fi
+  PROCESSOS_PROXY="$(printf '%s\n' "$PORTAS_PUBLICAS" | sed '1d' | sed '/^[[:space:]]*$/d')"
+  if [[ -z "$PROCESSOS_PROXY" ]]; then TIPO_PROXY="nginx"
+  elif printf '%s\n' "$PROCESSOS_PROXY" | grep -q 'caddy' && ! printf '%s\n' "$PROCESSOS_PROXY" | grep -vq 'caddy'; then TIPO_PROXY="caddy"
+  elif printf '%s\n' "$PROCESSOS_PROXY" | grep -q 'nginx' && ! printf '%s\n' "$PROCESSOS_PROXY" | grep -vq 'nginx'; then TIPO_PROXY="nginx"
+  else TIPO_PROXY="externo"; fi
+  echo "Proxy detectado: $TIPO_PROXY"
 fi
 
 echo "[1/9] Verificando sistema e dependências..."
@@ -155,27 +155,27 @@ done
 
 echo "[8/9] Configurando proxy reverso e HTTPS..."
 PROXY_GERENCIADO=false
-if ! $AMBIENTE_LOCAL && ! $PROXY_EXTERNO; then
+if ! $AMBIENTE_LOCAL && [[ "$TIPO_PROXY" == "nginx" ]]; then
   "$RAIZ/scripts/configurar-nginx.sh" "$DOMINIO" "$EMAIL_CERTIFICADO"
   PROXY_GERENCIADO=true
-elif $PROXY_EXTERNO; then
-  echo "Configuração NGINX ignorada: o encaminhamento do domínio para 127.0.0.1:3000 pertence ao proxy externo."
+elif ! $AMBIENTE_LOCAL && [[ "$TIPO_PROXY" == "caddy" ]]; then
+  "$RAIZ/scripts/configurar-caddy.sh" "$DOMINIO"
+  PROXY_GERENCIADO=true
+elif [[ "$TIPO_PROXY" == "externo" ]]; then
+  echo "Portas 80/443 em estado ambíguo. Nenhum proxy foi alterado." >&2
+  exit 1
 fi
 
 echo "[9/9] Auditoria final..."
 $SUDO systemctl is-enabled --quiet moveon.service; $SUDO systemctl is-active --quiet moveon.service
 $SUDO docker compose ps --status running | grep -q banco
 $SUDO docker compose ps --status running | grep -q redis
-if $PROXY_GERENCIADO; then $SUDO nginx -t; fi
+if $PROXY_GERENCIADO && [[ "$TIPO_PROXY" == "nginx" ]]; then $SUDO nginx -t; fi
 # Valida o origin diretamente; o Cloudflare pode responder com desafio 403
 # para clientes de terminal mesmo quando o portal está saudável.
 if $PROXY_GERENCIADO && $HTTPS; then
   curl --noproxy '*' -fsS --max-time 15 --resolve "$DOMINIO:443:127.0.0.1" "https://$DOMINIO" >/dev/null
-elif ! $PROXY_EXTERNO; then
+elif [[ "$TIPO_PROXY" != "externo" ]]; then
   curl -fsS --max-time 15 "$URL_PLATAFORMA" >/dev/null
 fi
-if $PROXY_EXTERNO; then
-  echo "MOVE.ON instalado/atualizado e saudável em 127.0.0.1:3000. O proxy externo deve publicar $URL_PLATAFORMA."
-else
-  echo "MOVE.ON instalado/atualizado com sucesso em $URL_PLATAFORMA"
-fi
+echo "MOVE.ON instalado/atualizado com sucesso em $URL_PLATAFORMA usando $TIPO_PROXY."
