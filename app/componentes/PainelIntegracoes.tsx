@@ -36,8 +36,18 @@ async function api<T>(url: string, opcoes: RequestInit = {}) {
     ...opcoes,
     headers: { "Content-Type": "application/json", ...opcoes.headers },
   });
-  const d = (await r.json()) as T & { erro?: string };
-  if (!r.ok) throw new Error(d.erro || "Não foi possível concluir.");
+  const d = (await r.json()) as T & {
+    erro?: string;
+    detalhes?: { fieldErrors?: Record<string, string[]> };
+  };
+  if (!r.ok) {
+    const campos = Object.entries(d.detalhes?.fieldErrors || {})
+      .flatMap(([campo, erros]) => erros.map((erro) => `${campo}: ${erro}`))
+      .join(" ");
+    throw new Error(
+      [d.erro || "Não foi possível concluir.", campos].filter(Boolean).join(" "),
+    );
+  }
   return d;
 }
 export default function PainelIntegracoes() {
