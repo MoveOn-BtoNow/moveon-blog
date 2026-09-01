@@ -15,6 +15,7 @@ const raizUploads = path.resolve(process.cwd(), ambiente.PASTA_UPLOADS);
 const pastaCapas = path.join(raizUploads, "capas");
 const pastaSociais = path.join(raizUploads, "sociais");
 const pastaPerfis = path.join(raizUploads, "perfis");
+const pastaConteudos = path.join(raizUploads, "conteudos");
 const formatos = new Map([
   ["image/jpeg", "jpg"],
   ["image/png", "png"],
@@ -143,6 +144,37 @@ export async function armazenarFotoPerfil(arquivo?: Express.Multer.File) {
   return `/uploads/perfis/${nome}`;
 }
 
+export async function armazenarImagemConteudo(arquivo?: Express.Multer.File) {
+  if (!arquivo) throw new Error("Selecione uma imagem.");
+  const tipo = await fileTypeFromBuffer(arquivo.buffer);
+  if (!tipo || !formatos.has(tipo.mime))
+    throw new Error("Formato inválido. Envie JPEG, PNG, WebP ou AVIF.");
+  const nome = `${randomUUID()}.webp`;
+  const imagem = criarProcessadorImagem(arquivo.buffer, {
+    failOn: "error",
+    limitInputPixels: 40_000_000,
+    sequentialRead: true,
+  })
+    .rotate()
+    .resize({
+      width: 1920,
+      height: 1920,
+      fit: "inside",
+      withoutEnlargement: true,
+      fastShrinkOnLoad: true,
+    })
+    .webp({ quality: 84 });
+  if (await usarS3())
+    return enviarObjeto(
+      `conteudos/${nome}`,
+      await imagem.toBuffer(),
+      "image/webp",
+    );
+  await mkdir(pastaConteudos, { recursive: true });
+  await imagem.toFile(path.join(pastaConteudos, nome));
+  return `/uploads/conteudos/${nome}`;
+}
+
 export async function fotoPerfilExiste(caminho?: string | null) {
   if (await objetoExiste(caminho)) return true;
   if (!caminho?.startsWith("/uploads/perfis/")) return false;
@@ -172,6 +204,41 @@ export async function excluirCapaGerenciada(caminho?: string | null) {
   await unlink(destino).catch((erro) => {
     if ((erro as NodeJS.ErrnoException).code !== "ENOENT") throw erro;
   });
+}
+
+export async function excluirMidiaGerenciada(caminho?: string | null) {
+  if (!caminho) return;
+  if (await excluirObjeto(caminho)) return;
+  if (!/^\/uploads\/(capas|sociais|conteudos)\/[a-f0-9-]+\.(jpg|webp)$/i.test(caminho))
+    return;
+  const segmento = caminho.split("/")[2];
+  const pastas: Record<string, string> = {
+    capas: pastaCapas,
+    sociais: pastaSociais,
+    conteudos: pastaConteudos,
+  };
+  const pasta = pastas[segmento];
+  if (!pasta) return;
+  const destino = path.resolve(pasta, path.basename(caminho));
+  if (path.dirname(destino) !== pasta) return;
+  await unlink(destino).catch((erro) => {
+    if ((erro as NodeJS.ErrnoException).code !== "ENOENT") throw erro;
+  });
+}
+
+export function extrairUrlsDeMidia(conteudo: unknown) {
+  const html =
+    typeof conteudo === "string"
+      ? conteudo
+      : conteudo && typeof conteudo === "object" && "texto" in conteudo
+        ? String((conteudo as { texto?: unknown }).texto || "")
+        : "";
+  const urls = new Set<string>();
+  for (const correspondencia of html.matchAll(
+    /(?:src|href|url)=["']([^"']+)["']/gi,
+  ))
+    urls.add(correspondencia[1]);
+  return urls;
 }
 export async function excluirFotoPerfil(caminho?: string | null) {
   if (await excluirObjeto(caminho)) return;

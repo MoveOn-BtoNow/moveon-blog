@@ -43,6 +43,14 @@ function basePublica(c: ConfigS3) {
     ? `https://${c.s3Bucket}.s3.amazonaws.com`
     : `https://${c.s3Bucket}.s3.${c.s3Regiao}.amazonaws.com`;
 }
+function erroS3(erro: unknown): Error {
+  const mensagem = erro instanceof Error ? erro.message : String(erro);
+  if (/credentials|credential provider/i.test(mensagem))
+    return new Error(
+      "A API não encontrou credenciais AWS. Associe uma IAM Role com acesso ao bucket à instância EC2 e reinicie o serviço moveon.",
+    );
+  return erro instanceof Error ? erro : new Error("Falha ao acessar o S3.");
+}
 export async function usarS3() {
   return (await configuracao()).armazenamentoModo === "s3";
 }
@@ -50,15 +58,19 @@ export async function enviarObjeto(chave: string, corpo: Buffer, tipo: string) {
   const c = await configuracao();
   if (c.armazenamentoModo !== "s3")
     throw new Error("Storage S3 não está ativo.");
-  await cliente(c).send(
-    new PutObjectCommand({
-      Bucket: c.s3Bucket,
-      Key: chave,
-      Body: corpo,
-      ContentType: tipo,
-      CacheControl: "public,max-age=31536000,immutable",
-    }),
-  );
+  try {
+    await cliente(c).send(
+      new PutObjectCommand({
+        Bucket: c.s3Bucket,
+        Key: chave,
+        Body: corpo,
+        ContentType: tipo,
+        CacheControl: "public,max-age=31536000,immutable",
+      }),
+    );
+  } catch (erro) {
+    throw erroS3(erro);
+  }
   return `${basePublica(c)}/${chave}`;
 }
 function chaveUrl(url: string, c: ConfigS3) {

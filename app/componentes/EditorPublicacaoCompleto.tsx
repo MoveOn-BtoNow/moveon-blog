@@ -77,7 +77,7 @@ class AdaptadorUploadMoveOn implements UploadAdapter {
     if (!arquivo) throw new Error("Nenhuma imagem foi selecionada.");
     const dados = new FormData();
     dados.append("imagem", arquivo);
-    const resposta = await fetch("/api/painel/uploads/capas", {
+    const resposta = await fetch("/api/painel/uploads/imagens-conteudo", {
       method: "POST",
       credentials: "include",
       body: dados,

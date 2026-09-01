@@ -13,8 +13,11 @@ import {
 import {
   armazenarCapa,
   armazenarFotoPerfil,
+  armazenarImagemConteudo,
   excluirCapaGerenciada,
   excluirFotoPerfil,
+  excluirMidiaGerenciada,
+  extrairUrlsDeMidia,
   fotoPerfilExiste,
 } from "./armazenamento-capas";
 import { servicoNewsletter } from "../newsletter/newsletter.servico";
@@ -27,6 +30,17 @@ const repositorio = new RepositorioPainel();
 const idParametro = (requisicao: Request) => String(requisicao.params.id);
 
 export class ControladorPainel {
+  enviarImagemConteudo = async (requisicao: Request, resposta: Response) => {
+    try {
+      resposta.status(201).json({
+        caminho: await armazenarImagemConteudo(requisicao.file),
+      });
+    } catch (erro) {
+      resposta.status(400).json({
+        erro: erro instanceof Error ? erro.message : "Imagem inválida.",
+      });
+    }
+  };
   enviarVideo = async (requisicao:Request,resposta:Response)=>{try{resposta.status(201).json({caminho:await armazenarVideo(requisicao.file)});}catch(e){resposta.status(400).json({erro:e instanceof Error?e.message:"Vídeo inválido."});}};
   listarParceiros = async (_: Request, resposta: Response) =>
     resposta.json(await repositorio.listarParceiros());
@@ -143,13 +157,29 @@ export class ControladorPainel {
       anterior.imagemSocialUrl !== validacao.data.imagemSocialUrl
     )
       await excluirCapaGerenciada(anterior.imagemSocialUrl);
+    const urlsAnteriores = extrairUrlsDeMidia(anterior?.conteudo);
+    const urlsAtuais = extrairUrlsDeMidia(validacao.data.conteudo);
+    await Promise.all(
+      [...urlsAnteriores]
+        .filter((url) => !urlsAtuais.has(url))
+        .map((url) => excluirMidiaGerenciada(url)),
+    );
     resposta.json({ ok: true });
   };
   excluirPublicacao = async (requisicao: Request, resposta: Response) => {
     const item = await repositorio.obterPublicacao(idParametro(requisicao));
+    if (!item)
+      return void resposta
+        .status(404)
+        .json({ erro: "Publicação não encontrada." });
+    await Promise.all([
+      excluirMidiaGerenciada(item?.imagemCapaUrl),
+      excluirMidiaGerenciada(item?.imagemSocialUrl),
+      ...[...extrairUrlsDeMidia(item?.conteudo)].map((url) =>
+        excluirMidiaGerenciada(url),
+      ),
+    ]);
     await repositorio.excluirPublicacao(idParametro(requisicao));
-    await excluirCapaGerenciada(item?.imagemCapaUrl);
-    await excluirCapaGerenciada(item?.imagemSocialUrl);
     resposta.status(204).end();
   };
   listarCategorias = async (_: Request, resposta: Response) =>

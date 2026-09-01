@@ -38,6 +38,21 @@ rotasPainel.post(
   c.enviarCapa,
 );
 rotasPainel.post(
+  "/uploads/imagens-conteudo",
+  (requisicao, resposta, proximo) =>
+    receberImagem.single("imagem")(requisicao, resposta, (erro) =>
+      erro
+        ? resposta.status(400).json({
+            erro:
+              erro.code === "LIMIT_FILE_SIZE"
+                ? `A imagem deve ter no máximo ${ambiente.MAX_IMAGEM_CAPA_MB} MB.`
+                : "Arquivo de imagem inválido.",
+          })
+        : proximo(),
+    ),
+  c.enviarImagemConteudo,
+);
+rotasPainel.post(
   "/uploads/perfil",
   (req, res, next) =>
     receberImagem.single("imagem")(req, res, (erro) =>
