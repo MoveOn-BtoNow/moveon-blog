@@ -57,7 +57,7 @@ fi
 
 # A auditoria é informativa. Correções, especialmente com --force, devem ser
 # aplicadas no desenvolvimento, testadas e versionadas antes da implantação.
-npm audit --omit=dev || true
+npm audit || true
 $SUDO docker compose up -d banco
 for tentativa in {1..30}; do $SUDO docker compose exec -T banco pg_isready -U moveon -d moveon >/dev/null 2>&1 && break; sleep 2; [[ $tentativa -eq 30 ]] && exit 1; done
 npm run banco:migrar
