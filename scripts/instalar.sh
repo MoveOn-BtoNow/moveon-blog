@@ -78,21 +78,23 @@ if [[ ! -d node_modules || -z "$HASH_DEPENDENCIAS" || "$HASH_DEPENDENCIAS" != "$
   if [[ -f package-lock.json ]]; then npm ci || { npm cache verify; npm ci; }
   else npm install || { npm cache verify; npm install; }; fi
   [[ -n "$HASH_DEPENDENCIAS" ]] && printf '%s\n' "$HASH_DEPENDENCIAS" > .estado-instalacao/package-lock.sha256
+  npm audit || true
 else
   echo "Dependências não mudaram; instalação preservada."
 fi
-npm audit || true
 
 echo "[4/9] Iniciando PostgreSQL e Redis..."
-$SUDO docker compose up -d banco redis
-for tentativa in {1..30}; do
-  $SUDO docker compose exec -T banco pg_isready -U "$(valor_env POSTGRES_USUARIO)" -d "$(valor_env POSTGRES_BANCO)" >/dev/null 2>&1 && break
-  sleep 2; [[ $tentativa -eq 30 ]] && { echo "PostgreSQL não ficou saudável." >&2; exit 1; }
-done
-for tentativa in {1..30}; do
-  $SUDO docker compose exec -T redis redis-cli -a "$(valor_env REDIS_SENHA)" ping 2>/dev/null | grep -q PONG && break
-  sleep 2; [[ $tentativa -eq 30 ]] && { echo "Redis não ficou saudável." >&2; exit 1; }
-done
+if ! $SUDO docker compose up -d --wait --wait-timeout 90 banco redis; then
+  echo "Primeira verificação falhou; reiniciando apenas os containers do MOVE.ON..." >&2
+  $SUDO docker compose restart banco redis
+  if ! $SUDO docker compose up -d --wait --wait-timeout 60 banco redis; then
+    $SUDO docker compose ps
+    $SUDO docker compose logs --tail 80 banco redis
+    echo "PostgreSQL ou Redis não ficou saudável dentro do limite." >&2
+    exit 1
+  fi
+fi
+echo "PostgreSQL e Redis saudáveis."
 
 echo "[5/9] Aplicando banco e validando o código..."
 npm run banco:migrar; npm run banco:semear; npm run tipos; npm run build
