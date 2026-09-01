@@ -57,6 +57,7 @@ export default function PainelIntegracoes() {
     [editarOtel, setEditarOtel] = useState(false),
     [mensagens, setMensagens] = useState<Partial<Record<Servico, string>>>({}),
     [salvando, setSalvando] = useState<Servico | null>(null),
+    [testandoOtel, setTestandoOtel] = useState(false),
     [erroInicial, setErroInicial] = useState("");
   useEffect(() => {
     api<C>("/painel/integracoes")
@@ -121,7 +122,10 @@ export default function PainelIntegracoes() {
       if (servico === "opentelemetry") setEditarOtel(false);
       setMensagens((atual) => ({
         ...atual,
-        [servico]: "Configuração salva com sucesso.",
+        [servico]:
+          servico === "opentelemetry" && f.otelAtivo
+            ? "Configuração salva e entrega OTLP confirmada."
+            : "Configuração salva com sucesso.",
       }));
     } catch (e) {
       setMensagens((atual) => ({
@@ -130,6 +134,27 @@ export default function PainelIntegracoes() {
       }));
     } finally {
       setSalvando(null);
+    }
+  }
+  async function testarOtel() {
+    setTestandoOtel(true);
+    setMensagens((atual) => ({ ...atual, opentelemetry: "" }));
+    try {
+      const teste = await api<{ statusHttp: number; duracaoMs: number }>(
+        "/painel/integracoes/opentelemetry/testar",
+        { method: "POST", body: "{}" },
+      );
+      setMensagens((atual) => ({
+        ...atual,
+        opentelemetry: `Log entregue com sucesso (HTTP ${teste.statusHttp}, ${teste.duracaoMs} ms).`,
+      }));
+    } catch (erro) {
+      setMensagens((atual) => ({
+        ...atual,
+        opentelemetry: (erro as Error).message,
+      }));
+    } finally {
+      setTestandoOtel(false);
     }
   }
   return (
@@ -365,6 +390,14 @@ export default function PainelIntegracoes() {
           onClick={() => salvar("opentelemetry")}
           texto="Salvar OpenTelemetry"
         />
+        <button
+          type="button"
+          className="habilitar-servidor-email"
+          disabled={testandoOtel || salvando !== null || !f.otelAtivo}
+          onClick={() => void testarOtel()}
+        >
+          {testandoOtel ? "Testando entrega…" : "Testar conexão OTLP"}
+        </button>
       </Bloco>
       {erroInicial && <p className="contato-retorno">{erroInicial}</p>}
     </div>

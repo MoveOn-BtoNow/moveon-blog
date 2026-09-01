@@ -29,6 +29,64 @@ function cabecalhos(valor: string) {
       .filter(([k, v]) => k && v),
   );
 }
+export async function testarOpenTelemetry() {
+  const d = await new RepositorioIntegracoes().obter(true);
+  if (!d.otelAtivo || !d.otelEndpoint)
+    throw new Error("Ative o OpenTelemetry e informe o endpoint OTLP/HTTP.");
+  const inicio = performance.now();
+  const resposta = await fetch(String(d.otelEndpoint), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...cabecalhos(String(d.otelCabecalhos || "")),
+    },
+    body: JSON.stringify({
+      resourceLogs: [
+        {
+          resource: {
+            attributes: [
+              {
+                key: "service.name",
+                value: { stringValue: String(d.otelNomeServico) },
+              },
+            ],
+          },
+          scopeLogs: [
+            {
+              scope: { name: "moveon-backend-verificacao" },
+              logRecords: [
+                {
+                  timeUnixNano: `${Date.now()}000000`,
+                  severityNumber: SeverityNumber.INFO,
+                  severityText: "INFO",
+                  body: { stringValue: "opentelemetry_conexao_verificada" },
+                  attributes: [
+                    {
+                      key: "moveon.verificacao",
+                      value: { boolValue: true },
+                    },
+                  ],
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!resposta.ok) {
+    const detalhe = (await resposta.text().catch(() => "")).slice(0, 300);
+    throw new Error(
+      `Collector OTLP respondeu HTTP ${resposta.status}${detalhe ? `: ${detalhe}` : "."}`,
+    );
+  }
+  return {
+    ok: true,
+    statusHttp: resposta.status,
+    duracaoMs: Math.round(performance.now() - inicio),
+  };
+}
 export async function configurarOpenTelemetry() {
   if (provedor) await provedor.shutdown().catch(() => undefined);
   provedor = null;

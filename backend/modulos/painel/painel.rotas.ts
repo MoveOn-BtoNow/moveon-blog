@@ -106,6 +106,10 @@ rotasPainel.put("/integracoes", integracoes.salvar);
 rotasPainel.put("/integracoes/armazenamento", integracoes.salvarArmazenamento);
 rotasPainel.put("/integracoes/analytics", integracoes.salvarAnalytics);
 rotasPainel.put("/integracoes/opentelemetry", integracoes.salvarOpenTelemetry);
+rotasPainel.post(
+  "/integracoes/opentelemetry/testar",
+  integracoes.testarOpenTelemetry,
+);
 rotasPainel.get("/conteudos-legais", integracoes.conteudosLegais);
 rotasPainel.put("/conteudos-legais/consentimento", integracoes.salvarConsentimento);
 rotasPainel.put("/conteudos-legais/privacidade", integracoes.salvarDocumento("privacidade"));

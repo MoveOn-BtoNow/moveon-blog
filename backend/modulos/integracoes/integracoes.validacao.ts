@@ -52,7 +52,53 @@ export const esquemaOpenTelemetry = z
     otelNomeServico: z.string().trim().min(2).max(120),
     otelNivelMinimo: z.enum(["debug", "info", "warn", "error"]),
   })
-  .strict();
+  .strict()
+  .superRefine((dados, contexto) => {
+    if (dados.otelAtivo && !dados.otelEndpoint)
+      contexto.addIssue({
+        code: "custom",
+        path: ["otelEndpoint"],
+        message: "Informe o endpoint OTLP/HTTP.",
+      });
+    if (dados.otelEndpoint) {
+      const endpoint = new URL(dados.otelEndpoint);
+      if (!['http:', 'https:'].includes(endpoint.protocol))
+        contexto.addIssue({
+          code: "custom",
+          path: ["otelEndpoint"],
+          message: "Use um endpoint HTTP ou HTTPS.",
+        });
+      if (!endpoint.pathname.endsWith("/v1/logs"))
+        contexto.addIssue({
+          code: "custom",
+          path: ["otelEndpoint"],
+          message: "O endpoint de logs OTLP/HTTP deve terminar com /v1/logs.",
+        });
+    }
+    const proibidos = new Set([
+      "host",
+      "content-length",
+      "connection",
+      "transfer-encoding",
+      "cookie",
+    ]);
+    for (const [indice, linha] of dados.otelCabecalhos.split(/\r?\n/).entries()) {
+      if (!linha.trim()) continue;
+      const separador = linha.indexOf(":");
+      const nome = separador > 0 ? linha.slice(0, separador).trim() : "";
+      const valor = separador > 0 ? linha.slice(separador + 1).trim() : "";
+      if (
+        !/^[A-Za-z0-9!#$%&'*+.^_`|~-]+$/.test(nome) ||
+        !valor ||
+        proibidos.has(nome.toLowerCase())
+      )
+        contexto.addIssue({
+          code: "custom",
+          path: ["otelCabecalhos"],
+          message: `Cabeçalho inválido na linha ${indice + 1}.`,
+        });
+    }
+  });
 export const esquemaIntegracoes = z
   .object({
     armazenamentoModo: z.enum(["local", "s3"]),

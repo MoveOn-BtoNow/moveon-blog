@@ -8,6 +8,7 @@ import { randomBytes } from "node:crypto";
 import {
   configurarOpenTelemetry,
   registrarLog,
+  testarOpenTelemetry as testarConexaoOpenTelemetry,
 } from "../../infraestrutura/observabilidade/open-telemetry";
 import { ambiente } from "../../configuracoes/ambiente";
 import { higienizarConteudoHtml } from "../../compartilhado/seguranca/higienizar-html";
@@ -129,19 +130,40 @@ export class ControladorIntegracoes {
         erro: "Revise as configurações do OpenTelemetry.",
         detalhes: v.error.flatten(),
       });
+    let configuracaoSalva = false;
     try {
       await repositorio.salvarOpenTelemetry(
         v.data,
         res.locals.administrador.id,
       );
+      configuracaoSalva = true;
       await configurarOpenTelemetry();
       registrarLog("info", "configuracao_opentelemetry_atualizada", {
         administrador_id: res.locals.administrador.id,
       });
-      return res.json(await repositorio.obter(false));
+      const teste = v.data.otelAtivo
+        ? await testarConexaoOpenTelemetry()
+        : null;
+      return res.json({ ...(await repositorio.obter(false)), teste });
     } catch (e) {
-      return res.status(400).json({
-        erro: e instanceof Error ? e.message : "Não foi possível salvar.",
+      return res.status(configuracaoSalva ? 502 : 400).json({
+        erro: configuracaoSalva
+          ? `Configuração salva, mas o teste de entrega falhou: ${e instanceof Error ? e.message : "erro desconhecido"}`
+          : e instanceof Error
+            ? e.message
+            : "Não foi possível salvar.",
+      });
+    }
+  };
+  testarOpenTelemetry = async (_req: Request, res: Response) => {
+    try {
+      return res.json(await testarConexaoOpenTelemetry());
+    } catch (erro) {
+      return res.status(502).json({
+        erro:
+          erro instanceof Error
+            ? `Falha ao entregar log de teste: ${erro.message}`
+            : "Falha ao testar o Collector OTLP.",
       });
     }
   };
