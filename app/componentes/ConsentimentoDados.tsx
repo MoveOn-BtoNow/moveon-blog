@@ -29,8 +29,13 @@ function informarEstadoAnalytics(estado: EstadoAnalytics, detalhe?: string) {
 }
 function prepararGtag() {
   window.dataLayer = window.dataLayer || [];
-  window.gtag ??= (...argumentos: unknown[]) =>
-    window.dataLayer!.push(argumentos);
+  window.gtag ??= function (...argumentos: unknown[]) {
+    // O gtag.js identifica comandos pelo objeto nativo `arguments`.
+    // Um Array comum pode ser tratado como um item genérico do dataLayer.
+    void argumentos;
+    // eslint-disable-next-line prefer-rest-params -- formato exigido pelo snippet oficial do gtag
+    window.dataLayer!.push(arguments);
+  };
 }
 function registrarPagina() {
   window.gtag?.("event", "page_view", {
