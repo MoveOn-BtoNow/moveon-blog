@@ -17,6 +17,8 @@ O instalador configura Docker, Node.js 22, dependências bloqueadas pelo `packag
 
 O instalador detecta automaticamente o proxy que controla 80/443. Em VPS livre ou com NGINX, cria um virtual host NGINX isolado, configura `127.0.0.1:3000`, certificado Let's Encrypt e renovação. Se Caddy estiver ativo, acrescenta somente um bloco MOVE.ON delimitado ao Caddyfile existente e utiliza o TLS automático do Caddy. Configurações e domínios de outras aplicações não são lidos nem reescritos. Estados mistos ou proxies desconhecidos são recusados para evitar interferência.
 
+Em ambos os proxies, `/api` e `/uploads` são encaminhados para o backend em `127.0.0.1:3001`; as demais rotas seguem para o portal em `127.0.0.1:3000`. A instalação só conclui depois de validar portal e API através do HTTPS do próprio domínio.
+
 PostgreSQL e Redis utilizam `restart: unless-stopped`. Portal e API são instalados como `moveon.service`, habilitado no boot e configurado com `Restart=always`. O NGINX e o timer de renovação do certificado também são habilitados. Assim, a plataforma volta a operar após reinicialização ou falha inesperada.
 
 Gerenciamento e logs do serviço:

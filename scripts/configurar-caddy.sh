@@ -62,9 +62,18 @@ $DOMINIO {
         -Server
         -X-Powered-By
     }
-    reverse_proxy 127.0.0.1:3000 {
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-Proto {scheme}
+    @backend path /api /api/* /uploads /uploads/*
+    handle @backend {
+        reverse_proxy 127.0.0.1:3001 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
+    }
+    handle {
+        reverse_proxy 127.0.0.1:3000 {
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
     }
 }
 $FIM
@@ -78,7 +87,8 @@ fi
 $SUDO systemctl is-active --quiet caddy
 
 for tentativa in {1..30}; do
-  if curl --noproxy '*' -fsS --max-time 10 --resolve "$DOMINIO:443:127.0.0.1" "https://$DOMINIO" >/dev/null 2>&1; then
+  if curl --noproxy '*' -fsS --max-time 10 --resolve "$DOMINIO:443:127.0.0.1" "https://$DOMINIO" >/dev/null 2>&1 \
+    && curl --noproxy '*' -fsS --max-time 10 --resolve "$DOMINIO:443:127.0.0.1" "https://$DOMINIO/api/saude" >/dev/null 2>&1; then
     CONCLUIDO=true
     echo "Caddy e HTTPS configurados exclusivamente para $DOMINIO."
     exit 0

@@ -175,6 +175,7 @@ if $PROXY_GERENCIADO && [[ "$TIPO_PROXY" == "nginx" ]]; then $SUDO nginx -t; fi
 # para clientes de terminal mesmo quando o portal está saudável.
 if $PROXY_GERENCIADO && $HTTPS; then
   curl --noproxy '*' -fsS --max-time 15 --resolve "$DOMINIO:443:127.0.0.1" "https://$DOMINIO" >/dev/null
+  curl --noproxy '*' -fsS --max-time 15 --resolve "$DOMINIO:443:127.0.0.1" "https://$DOMINIO/api/saude" >/dev/null
 elif [[ "$TIPO_PROXY" != "externo" ]]; then
   curl -fsS --max-time 15 "$URL_PLATAFORMA" >/dev/null
 fi
