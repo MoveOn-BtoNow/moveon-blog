@@ -19,5 +19,21 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: ${REDIS_IMAGEM}
+    container_name: ${REDIS_CONTAINER}
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes", "--requirepass", "${REDIS_SENHA}"]
+    ports:
+      - "${REDIS_HOST}:${REDIS_PORTA}:6379"
+    volumes:
+      - moveon_redis:/data
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a '${REDIS_SENHA}' ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
 volumes:
   moveon_dados:
+  moveon_redis:

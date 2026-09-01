@@ -3,6 +3,7 @@ import nodemailer from "nodemailer";
 import { ambiente } from "../../configuracoes/ambiente";
 import { conexao } from "../../infraestrutura/banco/conexao";
 import { descriptografarConfiguracao } from "../../compartilhado/seguranca/criptografia-configuracoes";
+import { filaRedis } from "../../infraestrutura/filas/fila-redis";
 
 const assinatura = (id: string, segredo: string) =>
   createHmac("sha256", segredo)
@@ -113,9 +114,11 @@ export class ServicoNewsletter {
        ON CONFLICT DO NOTHING`,
       [publicacaoId],
     );
-    void this.processar().catch((erro) =>
-      console.error("Falha ao iniciar o processamento da newsletter:", erro),
-    );
+    const sinalizado = await filaRedis.sinalizarNewsletter(publicacaoId);
+    if (!sinalizado)
+      void this.processar().catch((erro) =>
+        console.error("Falha ao iniciar o processamento da newsletter:", erro),
+      );
   }
 
   async processar() {

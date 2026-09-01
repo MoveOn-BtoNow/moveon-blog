@@ -42,6 +42,9 @@ const esquemaAmbiente = z.object({
   EMAIL_REMETENTE_ENDERECO: z.string().email(),
   EMAIL_SEGREDO_CANCELAMENTO: z.string().min(32),
   URL_PUBLICA_PORTAL: z.string().url(),
+  REDIS_ATIVO: z.string().default("false").transform((v) => v.toLowerCase() === "true"),
+  REDIS_URL: z.string().default("redis://127.0.0.1:6380"),
+  REDIS_PREFIXO: z.string().regex(/^[A-Za-z0-9:_-]+$/).default("moveon"),
 });
 
 const resultado = esquemaAmbiente.safeParse(process.env);

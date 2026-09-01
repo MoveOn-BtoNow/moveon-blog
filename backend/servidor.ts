@@ -3,6 +3,7 @@ import { ambiente } from "./configuracoes/ambiente";
 import { encerrarConexao } from "./infraestrutura/banco/conexao";
 import { servicoNewsletter } from "./modulos/newsletter/newsletter.servico";
 import { configurarOpenTelemetry,encerrarOpenTelemetry } from "./infraestrutura/observabilidade/open-telemetry";
+import { filaRedis } from "./infraestrutura/filas/fila-redis";
 
 const aplicacao = criarAplicacao();
 void configurarOpenTelemetry().catch(erro=>console.error("Falha ao configurar OpenTelemetry:",erro));
@@ -21,12 +22,16 @@ const temporizadorNewsletter = setInterval(
 void servicoNewsletter.publicarAgendadas().catch((erro) =>
   console.error("Falha ao iniciar a newsletter:", erro),
 );
+void filaRedis
+  .iniciarConsumidor(() => servicoNewsletter.processar())
+  .catch((erro) => console.error("Falha ao iniciar consumidor Redis:", erro));
 
 async function encerrarServidor(sinal: string): Promise<void> {
   console.log(`Encerrando API após ${sinal}...`);
   clearInterval(temporizadorNewsletter);
   servidor.close(async () => {
     await encerrarOpenTelemetry().catch(()=>undefined);
+    await filaRedis.encerrar();
     await encerrarConexao();
     process.exit(0);
   });

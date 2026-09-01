@@ -43,5 +43,7 @@ yarn-error.log*
 /uploads/
 /logs/
 /CREDENCIAIS-INICIAIS.txt
+/.estado-instalacao/
+.env.backup.*
 /moveon.pid
 *.tsbuildinfo

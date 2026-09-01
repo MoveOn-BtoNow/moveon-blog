@@ -11,9 +11,13 @@ chmod +x scripts/instalar.sh
 ./scripts/instalar.sh https://blog.seudominio.com.br
 ```
 
-O instalador configura Docker, Node.js 22, dependências atualizadas compatíveis, `.env`, senhas aleatórias, PostgreSQL, migrations, seeders, testes de tipos, build e inicialização. As credenciais iniciais são gravadas com permissão restrita em `CREDENCIAIS-INICIAIS.txt`. Execute novamente para atualizar/reparar uma instalação existente. O domínio deve apontar para a VPS; configure depois seu proxy reverso (Nginx/Caddy) para a porta 3000 e HTTPS.
+Sem argumento, o instalador pergunta o domínio e sugere o valor já salvo em `.env`. O segundo argumento, opcional, define o e-mail do certificado: `./scripts/instalar.sh https://blog.exemplo.com.br infraestrutura@exemplo.com.br`.
 
-O banco utiliza a política Docker `restart: unless-stopped`. O portal e a API são instalados como o serviço `moveon.service`, habilitado automaticamente no boot da VPS e configurado com `Restart=always`. Assim, a plataforma volta a operar após reinicialização do Ubuntu ou falha inesperada do processo.
+O instalador configura Docker, Node.js 22, dependências bloqueadas pelo `package-lock.json`, `.env`, senhas aleatórias, PostgreSQL, Redis, migrations, seeders, testes, build, NGINX e certificado Let's Encrypt. Ele é idempotente: preserva o `.env` e seus segredos, cria backup antes de ajustes, reaplica somente migrations pendentes, evita reinstalar dependências inalteradas e repara serviços e configurações gerenciadas pelo projeto.
+
+Se Caddy, Apache ou HAProxy já estiver ativo, o instalador não toma as portas 80/443 nem desativa o serviço. Nesse cenário, preserva o proxy existente e valida a URL pública; o encaminhamento para `127.0.0.1:3000` continua sob responsabilidade da configuração já existente. Em uma VPS livre, configura NGINX e HTTPS automaticamente. O DNS do domínio deve apontar para a VPS para que a emissão do certificado seja possível.
+
+PostgreSQL e Redis utilizam `restart: unless-stopped`. Portal e API são instalados como `moveon.service`, habilitado no boot e configurado com `Restart=always`. O NGINX e o timer de renovação do certificado também são habilitados. Assim, a plataforma volta a operar após reinicialização ou falha inesperada.
 
 Gerenciamento e logs do serviço:
 
@@ -41,6 +45,7 @@ npm run dev
 - Administração: `http://localhost:3000/admin`
 - API: `http://127.0.0.1:3001`
 - PostgreSQL: database `moveon`, schema `public`, porta `5434`
+- Redis: somente em `127.0.0.1:6380`, protegido por senha
 
 ## Comandos
 
@@ -76,3 +81,5 @@ O backend inclui o SDK OpenTelemetry e exportador OTLP/HTTP de logs. Configure e
 ## Newsletter e SMTP
 
 Configure no `.env`: `EMAIL_ATIVO`, `SMTP_HOST`, `SMTP_PORTA`, `SMTP_SEGURO`, `SMTP_USUARIO`, `SMTP_SENHA`, `EMAIL_REMETENTE_NOME`, `EMAIL_REMETENTE_ENDERECO` e `EMAIL_SEGREDO_CANCELAMENTO`. Ative `EMAIL_ATIVO=true` somente após informar credenciais SMTP válidas. O dashboard permite editar assunto/texto e listar inscritos; cada mensagem contém cancelamento assinado. Publicações novas ou agendadas geram uma fila persistente, com até três tentativas de envio.
+
+O PostgreSQL mantém o estado durável de cada envio e o Redis acorda o consumidor assíncrono imediatamente. Se Redis estiver indisponível, o ciclo periódico processa a fila persistente sem perder mensagens. Essa composição permite múltiplas instâncias e evita manter requisições de publicação abertas durante o envio de e-mails.
