@@ -16,6 +16,7 @@ import { randomBytes } from "node:crypto";
 import { LimitadorRequisicoes } from "../../compartilhado/seguranca/limitador-requisicoes";
 import { ControladorContato } from "../contato/contato.controlador";
 import { ControladorIntegracoes } from "../integracoes/integracoes.controlador";
+import { entregarObjeto } from "../integracoes/armazenamento-objetos";
 
 const repositorio = new RepositorioPortal();
 const autenticacao = new ServicoAutenticacao(new RepositorioAutenticacao());
@@ -26,6 +27,7 @@ const limitadorNewsletter = new LimitadorRequisicoes(
   ambiente.MAX_CADASTROS_NEWSLETTER_POR_IP,
   ambiente.JANELA_NEWSLETTER_MINUTOS * 60_000,
 );
+rotasPortal.get("/midias/:pasta/:arquivo", entregarObjeto);
 const obterVisitanteSeguro = (req: Parameters<typeof lerCookie>[0], res: import("express").Response) => {
   let identificador = lerCookie(req, ambiente.NOME_COOKIE_VISITANTE);
   if (!identificador || !/^[a-f0-9]{64}$/i.test(identificador)) {
