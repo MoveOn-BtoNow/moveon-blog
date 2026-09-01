@@ -70,7 +70,7 @@ export class ControladorAutenticacao {
     const administrador = await this.servico.obterAdministrador(token);
     resposta.setHeader("Cache-Control", "no-store");
     if (!administrador) {
-      resposta.status(401).json({ autenticado: false });
+      resposta.status(200).json({ autenticado: false });
       return;
     }
     resposta.json({ autenticado: true, administrador });
