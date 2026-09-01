@@ -105,7 +105,7 @@ export class RepositorioIntegracoes {
       segredo = String(d.s3ChaveSecreta || ""),
       headers = String(d.otelCabecalhos || "");
     await conexao.query(
-      `UPDATE configuracoes_portal SET armazenamento_modo=$1,s3_endpoint=nullif($2,''),s3_regiao=$3,s3_bucket=nullif($4,''),s3_autenticacao=$5,s3_chave_acesso_criptografada=CASE WHEN $5='iam_role' THEN NULL WHEN $6='' THEN s3_chave_acesso_criptografada ELSE $7 END,s3_chave_secreta_criptografada=CASE WHEN $5='iam_role' THEN NULL WHEN $8='' THEN s3_chave_secreta_criptografada ELSE $9 END,s3_url_publica=nullif($10,''),s3_forcar_path_style=$11,analytics_ativo=$12,analytics_id_medicao=nullif($13,''),consentimento_ativo=$14,politica_dados_texto=coalesce($15,politica_dados_texto),permitir_analytics=$16,permitir_preferencias=$17,permitir_marketing=$18,otel_ativo=$19,otel_endpoint=nullif($20,''),otel_cabecalhos_criptografados=CASE WHEN $21='' THEN otel_cabecalhos_criptografados ELSE $22 END,otel_nome_servico=$23,otel_nivel_minimo=$24,atualizado_por=$25,atualizado_em=now() WHERE id=1`,
+      `UPDATE configuracoes_portal SET armazenamento_modo=$1,s3_endpoint=nullif($2,''),s3_regiao=$3,s3_bucket=nullif($4,''),s3_autenticacao=$5::varchar(20),s3_chave_acesso_criptografada=CASE WHEN $5::text='iam_role' THEN NULL WHEN $6='' THEN s3_chave_acesso_criptografada ELSE $7 END,s3_chave_secreta_criptografada=CASE WHEN $5::text='iam_role' THEN NULL WHEN $8='' THEN s3_chave_secreta_criptografada ELSE $9 END,s3_url_publica=nullif($10,''),s3_forcar_path_style=$11,analytics_ativo=$12,analytics_id_medicao=nullif($13,''),consentimento_ativo=$14,politica_dados_texto=coalesce($15,politica_dados_texto),permitir_analytics=$16,permitir_preferencias=$17,permitir_marketing=$18,otel_ativo=$19,otel_endpoint=nullif($20,''),otel_cabecalhos_criptografados=CASE WHEN $21='' THEN otel_cabecalhos_criptografados ELSE $22 END,otel_nome_servico=$23,otel_nivel_minimo=$24,atualizado_por=$25,atualizado_em=now() WHERE id=1`,
       [
         d.armazenamentoModo,
         d.s3Endpoint,
@@ -150,7 +150,7 @@ export class RepositorioIntegracoes {
     const acesso = String(d.s3ChaveAcesso || "");
     const segredo = String(d.s3ChaveSecreta || "");
     await conexao.query(
-      `UPDATE configuracoes_portal SET armazenamento_modo=$1,s3_endpoint=nullif($2,''),s3_regiao=$3,s3_bucket=nullif($4,''),s3_autenticacao=$5,s3_chave_acesso_criptografada=CASE WHEN $5='iam_role' THEN NULL WHEN $6='' THEN s3_chave_acesso_criptografada ELSE $7 END,s3_chave_secreta_criptografada=CASE WHEN $5='iam_role' THEN NULL WHEN $8='' THEN s3_chave_secreta_criptografada ELSE $9 END,s3_url_publica=nullif($10,''),s3_forcar_path_style=$11,atualizado_por=$12,atualizado_em=now() WHERE id=1`,
+      `UPDATE configuracoes_portal SET armazenamento_modo=$1,s3_endpoint=nullif($2,''),s3_regiao=$3,s3_bucket=nullif($4,''),s3_autenticacao=$5::varchar(20),s3_chave_acesso_criptografada=CASE WHEN $5::text='iam_role' THEN NULL WHEN $6='' THEN s3_chave_acesso_criptografada ELSE $7 END,s3_chave_secreta_criptografada=CASE WHEN $5::text='iam_role' THEN NULL WHEN $8='' THEN s3_chave_secreta_criptografada ELSE $9 END,s3_url_publica=nullif($10,''),s3_forcar_path_style=$11,atualizado_por=$12,atualizado_em=now() WHERE id=1`,
       [
         d.armazenamentoModo,
         d.s3Endpoint,
