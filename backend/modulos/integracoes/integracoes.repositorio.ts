@@ -135,6 +135,73 @@ export class RepositorioIntegracoes {
       ],
     );
   }
+  async salvarArmazenamento(d: Record<string, unknown>, adminId: string) {
+    const atual = await this.obter(false);
+    if (
+      d.armazenamentoModo === "s3" &&
+      (!d.s3Bucket ||
+        (d.s3Autenticacao === "chaves" &&
+          ((!d.s3ChaveAcesso && !atual.s3CredenciaisConfiguradas) ||
+            (!d.s3ChaveSecreta && !atual.s3CredenciaisConfiguradas))))
+    )
+      throw new Error(
+        "Configure o bucket e, no modo manual, informe Access Key e Secret Key.",
+      );
+    const acesso = String(d.s3ChaveAcesso || "");
+    const segredo = String(d.s3ChaveSecreta || "");
+    await conexao.query(
+      `UPDATE configuracoes_portal SET armazenamento_modo=$1,s3_endpoint=nullif($2,''),s3_regiao=$3,s3_bucket=nullif($4,''),s3_autenticacao=$5,s3_chave_acesso_criptografada=CASE WHEN $5='iam_role' THEN NULL WHEN $6='' THEN s3_chave_acesso_criptografada ELSE $7 END,s3_chave_secreta_criptografada=CASE WHEN $5='iam_role' THEN NULL WHEN $8='' THEN s3_chave_secreta_criptografada ELSE $9 END,s3_url_publica=nullif($10,''),s3_forcar_path_style=$11,atualizado_por=$12,atualizado_em=now() WHERE id=1`,
+      [
+        d.armazenamentoModo,
+        d.s3Endpoint,
+        d.s3Regiao,
+        d.s3Bucket,
+        d.s3Autenticacao,
+        acesso,
+        acesso ? criptografarConfiguracao(acesso) : null,
+        segredo,
+        segredo ? criptografarConfiguracao(segredo) : null,
+        d.s3UrlPublica,
+        d.s3ForcarPathStyle,
+        adminId,
+      ],
+    );
+  }
+  async salvarAnalytics(d: Record<string, unknown>, adminId: string) {
+    if (d.analyticsAtivo && !d.analyticsIdMedicao)
+      throw new Error("Informe o ID de medição do Google Analytics.");
+    await conexao.query(
+      `UPDATE configuracoes_portal SET analytics_ativo=$1,analytics_id_medicao=nullif($2,''),consentimento_ativo=$3,permitir_analytics=$4,permitir_preferencias=$5,permitir_marketing=$6,atualizado_por=$7,atualizado_em=now() WHERE id=1`,
+      [
+        d.analyticsAtivo,
+        d.analyticsIdMedicao,
+        d.consentimentoAtivo,
+        d.permitirAnalytics,
+        d.permitirPreferencias,
+        d.permitirMarketing,
+        adminId,
+      ],
+    );
+  }
+  async salvarOpenTelemetry(d: Record<string, unknown>, adminId: string) {
+    if (d.otelAtivo && !d.otelEndpoint)
+      throw new Error(
+        "Informe o endpoint OTLP antes de ativar a observabilidade.",
+      );
+    const headers = String(d.otelCabecalhos || "");
+    await conexao.query(
+      `UPDATE configuracoes_portal SET otel_ativo=$1,otel_endpoint=nullif($2,''),otel_cabecalhos_criptografados=CASE WHEN $3='' THEN otel_cabecalhos_criptografados ELSE $4 END,otel_nome_servico=$5,otel_nivel_minimo=$6,atualizado_por=$7,atualizado_em=now() WHERE id=1`,
+      [
+        d.otelAtivo,
+        d.otelEndpoint,
+        headers,
+        headers ? criptografarConfiguracao(headers) : null,
+        d.otelNomeServico,
+        d.otelNivelMinimo,
+        adminId,
+      ],
+    );
+  }
   async publica() {
     const d = await this.obter(false);
     return {

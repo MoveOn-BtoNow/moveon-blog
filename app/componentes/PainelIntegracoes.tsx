@@ -1,6 +1,7 @@
 "use client";
 import { BarChart3, Cloud, Settings } from "lucide-react";
-import { FormEvent, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+type Servico = "armazenamento" | "analytics" | "opentelemetry";
 type C = {
   armazenamentoModo: "local" | "s3";
   s3Endpoint: string;
@@ -52,62 +53,79 @@ async function api<T>(url: string, opcoes: RequestInit = {}) {
 }
 export default function PainelIntegracoes() {
   const [f, setF] = useState<C | null>(null),
-    [editar, setEditar] = useState(false),
-    [msg, setMsg] = useState("");
+    [editarS3, setEditarS3] = useState(false),
+    [editarOtel, setEditarOtel] = useState(false),
+    [mensagens, setMensagens] = useState<Partial<Record<Servico, string>>>({}),
+    [salvando, setSalvando] = useState<Servico | null>(null),
+    [erroInicial, setErroInicial] = useState("");
   useEffect(() => {
     api<C>("/painel/integracoes")
       .then(setF)
-      .catch((e) => setMsg(e.message));
+      .catch((e) => setErroInicial(e.message));
   }, []);
   if (!f) return <div className="tela-estado">Carregando integrações…</div>;
   const a = (k: keyof C, v: unknown) => setF({ ...f, [k]: v });
-  async function salvar(e: FormEvent) {
-    e.preventDefault();
+  async function salvar(servico: Servico) {
     if (!f) return;
-    const d = {
-      armazenamentoModo: f.armazenamentoModo,
-      s3Endpoint: f.s3Endpoint,
-      s3Regiao: f.s3Regiao,
-      s3Bucket: f.s3Bucket,
-      s3Autenticacao: f.s3Autenticacao,
-      s3ChaveAcesso: f.s3ChaveAcesso,
-      s3ChaveSecreta: f.s3ChaveSecreta,
-      s3UrlPublica: f.s3UrlPublica,
-      s3ForcarPathStyle: f.s3ForcarPathStyle,
-      analyticsAtivo: f.analyticsAtivo,
-      analyticsIdMedicao: f.analyticsIdMedicao,
-      consentimentoAtivo: f.consentimentoAtivo,
-      politicaDadosTexto: f.politicaDadosTexto,
-      permitirAnalytics: f.permitirAnalytics,
-      permitirPreferencias: f.permitirPreferencias,
-      permitirMarketing: f.permitirMarketing,
-      otelAtivo: f.otelAtivo,
-      otelEndpoint: f.otelEndpoint,
-      otelCabecalhos: f.otelCabecalhos,
-      otelNomeServico: f.otelNomeServico,
-      otelNivelMinimo: f.otelNivelMinimo,
+    const dados: Record<Servico, Record<string, unknown>> = {
+      armazenamento: {
+        armazenamentoModo: f.armazenamentoModo,
+        s3Endpoint: f.s3Endpoint,
+        s3Regiao: f.s3Regiao,
+        s3Bucket: f.s3Bucket,
+        s3Autenticacao: f.s3Autenticacao,
+        s3ChaveAcesso: f.s3ChaveAcesso,
+        s3ChaveSecreta: f.s3ChaveSecreta,
+        s3UrlPublica: f.s3UrlPublica,
+        s3ForcarPathStyle: f.s3ForcarPathStyle,
+      },
+      analytics: {
+        analyticsAtivo: f.analyticsAtivo,
+        analyticsIdMedicao: f.analyticsIdMedicao,
+        consentimentoAtivo: f.consentimentoAtivo,
+        permitirAnalytics: f.permitirAnalytics,
+        permitirPreferencias: f.permitirPreferencias,
+        permitirMarketing: f.permitirMarketing,
+      },
+      opentelemetry: {
+        otelAtivo: f.otelAtivo,
+        otelEndpoint: f.otelEndpoint,
+        otelCabecalhos: f.otelCabecalhos,
+        otelNomeServico: f.otelNomeServico,
+        otelNivelMinimo: f.otelNivelMinimo,
+      },
     };
+    setSalvando(servico);
+    setMensagens((atual) => ({ ...atual, [servico]: "" }));
     try {
       setF(
-        await api<C>("/painel/integracoes", {
+        await api<C>(`/painel/integracoes/${servico}`, {
           method: "PUT",
-          body: JSON.stringify(d),
+          body: JSON.stringify(dados[servico]),
         }),
       );
-      setEditar(false);
-      setMsg("Integrações atualizadas.");
+      if (servico === "armazenamento") setEditarS3(false);
+      if (servico === "opentelemetry") setEditarOtel(false);
+      setMensagens((atual) => ({
+        ...atual,
+        [servico]: "Configuração salva com sucesso.",
+      }));
     } catch (e) {
-      setMsg((e as Error).message);
+      setMensagens((atual) => ({
+        ...atual,
+        [servico]: (e as Error).message,
+      }));
+    } finally {
+      setSalvando(null);
     }
   }
   return (
-    <form className="pagina2 integracoes-admin" onSubmit={salvar}>
+    <div className="pagina2 integracoes-admin">
       <div className="card-head2">
         <div>
           <span>INFRAESTRUTURA E DADOS</span>
           <h2>Integrações</h2>
         </div>
-        <button className="primario">Salvar configurações</button>
       </div>
       <Bloco
         icone={<Cloud />}
@@ -175,7 +193,7 @@ export default function PainelIntegracoes() {
                         : "Access Key"
                     }
                     senha
-                    desativado={!editar}
+                    desativado={!editarS3}
                   />
                   <Campo
                     n="Secret Key"
@@ -187,7 +205,7 @@ export default function PainelIntegracoes() {
                         : "Secret Key"
                     }
                     senha
-                    desativado={!editar}
+                    desativado={!editarS3}
                   />
                 </>
               )}
@@ -201,9 +219,11 @@ export default function PainelIntegracoes() {
               <button
                 type="button"
                 className="habilitar-servidor-email"
-                onClick={() => setEditar((v) => !v)}
+                onClick={() => setEditarS3((v) => !v)}
               >
-                {editar ? "Bloquear segredos" : "Alterar credenciais e segredos"}
+                {editarS3
+                  ? "Bloquear segredos"
+                  : "Alterar credenciais e segredos"}
               </button>
             )}
             <small>
@@ -213,6 +233,12 @@ export default function PainelIntegracoes() {
             </small>
           </>
         )}
+        <AcaoSalvar
+          carregando={salvando === "armazenamento"}
+          mensagem={mensagens.armazenamento}
+          onClick={() => salvar("armazenamento")}
+          texto="Salvar armazenamento"
+        />
       </Bloco>
       <Bloco
         icone={<BarChart3 />}
@@ -252,6 +278,12 @@ export default function PainelIntegracoes() {
             set={(v) => a("permitirMarketing", v)}
           />
         </div>
+        <AcaoSalvar
+          carregando={salvando === "analytics"}
+          mensagem={mensagens.analytics}
+          onClick={() => salvar("analytics")}
+          texto="Salvar Google Analytics"
+        />
       </Bloco>
       <Bloco
         icone={<Settings />}
@@ -292,7 +324,7 @@ export default function PainelIntegracoes() {
             Cabeçalhos OTLP
             <textarea
               rows={4}
-              disabled={!editar}
+              disabled={!editarOtel}
               value={f.otelCabecalhos}
               onChange={(e) => a("otelCabecalhos", e.target.value)}
               placeholder={
@@ -303,13 +335,51 @@ export default function PainelIntegracoes() {
             />
           </label>
         </div>
+        <button
+          type="button"
+          className="habilitar-servidor-email"
+          onClick={() => setEditarOtel((valor) => !valor)}
+        >
+          {editarOtel ? "Bloquear cabeçalhos" : "Alterar cabeçalhos protegidos"}
+        </button>
         <small>
           Informe um cabeçalho por linha. Os valores são criptografados e não
           retornam ao navegador.
         </small>
+        <AcaoSalvar
+          carregando={salvando === "opentelemetry"}
+          mensagem={mensagens.opentelemetry}
+          onClick={() => salvar("opentelemetry")}
+          texto="Salvar OpenTelemetry"
+        />
       </Bloco>
-      {msg && <p className="contato-retorno">{msg}</p>}
-    </form>
+      {erroInicial && <p className="contato-retorno">{erroInicial}</p>}
+    </div>
+  );
+}
+function AcaoSalvar({
+  carregando,
+  mensagem,
+  onClick,
+  texto,
+}: {
+  carregando: boolean;
+  mensagem?: string;
+  onClick: () => void;
+  texto: string;
+}) {
+  return (
+    <div className="acao-integracao">
+      <button
+        type="button"
+        className="primario"
+        disabled={carregando}
+        onClick={onClick}
+      >
+        {carregando ? "Salvando…" : texto}
+      </button>
+      {mensagem && <p className="contato-retorno">{mensagem}</p>}
+    </div>
   );
 }
 function Bloco({

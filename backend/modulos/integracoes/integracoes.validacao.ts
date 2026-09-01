@@ -1,5 +1,58 @@
 import { z } from "zod";
 const urlOuVazio = z.union([z.string().trim().url().max(500), z.literal("")]);
+export const esquemaArmazenamento = z
+  .object({
+    armazenamentoModo: z.enum(["local", "s3"]),
+    s3Endpoint: urlOuVazio.default(""),
+    s3Regiao: z.string().trim().min(2).max(100).default("us-east-1"),
+    s3Bucket: z.string().trim().max(255).default(""),
+    s3Autenticacao: z.enum(["iam_role", "chaves"]).default("iam_role"),
+    s3ChaveAcesso: z.string().max(500).default(""),
+    s3ChaveSecreta: z.string().max(500).default(""),
+    s3UrlPublica: urlOuVazio.default(""),
+    s3ForcarPathStyle: z.boolean().default(false),
+  })
+  .strict()
+  .superRefine((dados, contexto) => {
+    if (dados.armazenamentoModo !== "s3") return;
+    if (!dados.s3Bucket)
+      contexto.addIssue({
+        code: "custom",
+        path: ["s3Bucket"],
+        message: "Informe o bucket.",
+      });
+    if (
+      dados.s3Autenticacao === "chaves" &&
+      Boolean(dados.s3ChaveAcesso) !== Boolean(dados.s3ChaveSecreta)
+    )
+      contexto.addIssue({
+        code: "custom",
+        path: ["s3ChaveSecreta"],
+        message: "Informe Access Key e Secret Key juntas.",
+      });
+  });
+export const esquemaAnalytics = z
+  .object({
+    analyticsAtivo: z.boolean(),
+    analyticsIdMedicao: z.union([
+      z.string().trim().regex(/^G-[A-Z0-9]{5,20}$/),
+      z.literal(""),
+    ]),
+    consentimentoAtivo: z.boolean(),
+    permitirAnalytics: z.boolean(),
+    permitirPreferencias: z.boolean(),
+    permitirMarketing: z.boolean(),
+  })
+  .strict();
+export const esquemaOpenTelemetry = z
+  .object({
+    otelAtivo: z.boolean(),
+    otelEndpoint: urlOuVazio,
+    otelCabecalhos: z.string().max(4000),
+    otelNomeServico: z.string().trim().min(2).max(120),
+    otelNivelMinimo: z.enum(["debug", "info", "warn", "error"]),
+  })
+  .strict();
 export const esquemaIntegracoes = z
   .object({
     armazenamentoModo: z.enum(["local", "s3"]),

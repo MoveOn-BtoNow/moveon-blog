@@ -17,8 +17,11 @@ import {
 } from "./conteudos-legais.validacao";
 import { RepositorioIntegracoes } from "./integracoes.repositorio";
 import {
+  esquemaAnalytics,
+  esquemaArmazenamento,
   esquemaConsentimento,
   esquemaIntegracoes,
+  esquemaOpenTelemetry,
 } from "./integracoes.validacao";
 const repositorio = new RepositorioIntegracoes();
 export class ControladorIntegracoes {
@@ -75,6 +78,64 @@ export class ControladorIntegracoes {
       await repositorio.salvar(v.data, res.locals.administrador.id);
       await configurarOpenTelemetry();
       registrarLog("info", "configuracoes_integracoes_atualizadas", {
+        administrador_id: res.locals.administrador.id,
+      });
+      return res.json(await repositorio.obter(false));
+    } catch (e) {
+      return res.status(400).json({
+        erro: e instanceof Error ? e.message : "Não foi possível salvar.",
+      });
+    }
+  };
+  salvarArmazenamento = async (req: Request, res: Response) => {
+    const v = esquemaArmazenamento.safeParse(req.body);
+    if (!v.success)
+      return res.status(400).json({
+        erro: "Revise as configurações de armazenamento.",
+        detalhes: v.error.flatten(),
+      });
+    try {
+      await repositorio.salvarArmazenamento(
+        v.data,
+        res.locals.administrador.id,
+      );
+      return res.json(await repositorio.obter(false));
+    } catch (e) {
+      return res.status(400).json({
+        erro: e instanceof Error ? e.message : "Não foi possível salvar.",
+      });
+    }
+  };
+  salvarAnalytics = async (req: Request, res: Response) => {
+    const v = esquemaAnalytics.safeParse(req.body);
+    if (!v.success)
+      return res.status(400).json({
+        erro: "Revise as configurações do Google Analytics.",
+        detalhes: v.error.flatten(),
+      });
+    try {
+      await repositorio.salvarAnalytics(v.data, res.locals.administrador.id);
+      return res.json(await repositorio.obter(false));
+    } catch (e) {
+      return res.status(400).json({
+        erro: e instanceof Error ? e.message : "Não foi possível salvar.",
+      });
+    }
+  };
+  salvarOpenTelemetry = async (req: Request, res: Response) => {
+    const v = esquemaOpenTelemetry.safeParse(req.body);
+    if (!v.success)
+      return res.status(400).json({
+        erro: "Revise as configurações do OpenTelemetry.",
+        detalhes: v.error.flatten(),
+      });
+    try {
+      await repositorio.salvarOpenTelemetry(
+        v.data,
+        res.locals.administrador.id,
+      );
+      await configurarOpenTelemetry();
+      registrarLog("info", "configuracao_opentelemetry_atualizada", {
         administrador_id: res.locals.administrador.id,
       });
       return res.json(await repositorio.obter(false));
