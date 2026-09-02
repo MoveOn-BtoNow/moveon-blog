@@ -2243,6 +2243,7 @@ function Editor({
     [enviando, setEnviando] = useState(false),
     [enviandoCapa, setEnviandoCapa] = useState(false),
     [enviandoVideo, setEnviandoVideo] = useState(false),
+    [versaoEditor, setVersaoEditor] = useState(0),
     [previsualizacaoCapaLocal, setPrevisualizacaoCapaLocal] = useState(""),
     [arquivoCapa, setArquivoCapa] = useState<{
       nome: string;
@@ -2296,10 +2297,15 @@ function Editor({
       };
       if (!resposta.ok || !corpo.caminho)
         throw new Error(corpo.erro || "Não foi possível enviar o vídeo.");
+      const urlVideo = new URL(corpo.caminho, window.location.origin)
+        .toString()
+        .replaceAll("&", "&amp;")
+        .replaceAll('"', "&quot;");
       setForm((atual) => ({
         ...atual,
-        conteudo: `${atual.conteudo}<figure class="video-conteudo"><video controls preload="metadata" src="${corpo.caminho}" style="width:100%;max-width:100%"></video></figure><p><br></p>`,
+        conteudo: `${atual.conteudo}<figure class="media"><oembed url="${urlVideo}"></oembed></figure><p><br></p>`,
       }));
+      setVersaoEditor((versao) => versao + 1);
     } catch (e) {
       setErro((e as Error).message);
     } finally {
@@ -2416,7 +2422,7 @@ function Editor({
             }
           >
             <EditorPublicacaoCompleto
-              key={publicacao?.id || "nova-publicacao"}
+              key={`${publicacao?.id || "nova-publicacao"}-${versaoEditor}`}
               valor={form.conteudo}
               aoAlterar={(conteudo) =>
                 setForm((atual) => ({ ...atual, conteudo }))

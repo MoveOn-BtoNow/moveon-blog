@@ -155,7 +155,7 @@ class RedimensionamentoVideo extends Plugin {
   init() {
     const editor = this.editor;
     editor.model.schema.extend("media", {
-      allowAttributes: ["larguraVideo"],
+      allowAttributes: ["larguraVideo", "alinhamentoVideo"],
     });
     editor.conversion.for("downcast").attributeToAttribute({
       model: { name: "media", key: "larguraVideo" },
@@ -164,6 +164,14 @@ class RedimensionamentoVideo extends Plugin {
     editor.conversion.for("upcast").attributeToAttribute({
       view: "data-largura-video",
       model: "larguraVideo",
+    });
+    editor.conversion.for("downcast").attributeToAttribute({
+      model: { name: "media", key: "alinhamentoVideo" },
+      view: "data-alinhamento",
+    });
+    editor.conversion.for("upcast").attributeToAttribute({
+      view: "data-alinhamento",
+      model: "alinhamentoVideo",
     });
 
     for (const largura of [25, 50, 75, 100]) {
@@ -185,6 +193,42 @@ class RedimensionamentoVideo extends Plugin {
           if (!elemento?.is("element", "media")) return;
           editor.model.change((escritor) =>
             escritor.setAttribute("larguraVideo", String(largura), elemento),
+          );
+          editor.editing.view.focus();
+        });
+        this.listenTo(
+          editor.model.document.selection,
+          "change",
+          atualizarDisponibilidade,
+        );
+        atualizarDisponibilidade();
+        return botao;
+      });
+    }
+    for (const [alinhamento, rotulo] of [
+      ["esquerda", "Vídeo à esquerda"],
+      ["centro", "Centralizar vídeo"],
+      ["direita", "Vídeo à direita"],
+    ] as const) {
+      const nome = `alinharVideo${alinhamento[0].toUpperCase()}${alinhamento.slice(1)}`;
+      editor.ui.componentFactory.add(nome, (localidade) => {
+        const botao = new ButtonView(localidade);
+        const atualizarDisponibilidade = () => {
+          const elemento = editor.model.document.selection.getSelectedElement();
+          botao.isEnabled = Boolean(elemento?.is("element", "media"));
+          botao.isOn =
+            elemento?.getAttribute("alinhamentoVideo") === alinhamento;
+        };
+        botao.set({
+          label: rotulo,
+          withText: true,
+          tooltip: rotulo,
+        });
+        botao.on("execute", () => {
+          const elemento = editor.model.document.selection.getSelectedElement();
+          if (!elemento?.is("element", "media")) return;
+          editor.model.change((escritor) =>
+            escritor.setAttribute("alinhamentoVideo", alinhamento, elemento),
           );
           editor.editing.view.focus();
         });
@@ -346,7 +390,25 @@ const configuracao = {
   },
   mediaEmbed: {
     previewsInData: true,
-    toolbar: ["resizeMediaEmbed"],
+    toolbar: [
+      "larguraVideo25", "larguraVideo50", "larguraVideo75", "larguraVideo100",
+      "|", "alinharVideoEsquerda", "alinharVideoCentro", "alinharVideoDireita",
+      "|", "resizeMediaEmbed",
+    ],
+    extraProviders: [
+      {
+        name: "videoMoveOn",
+        url: /^(https:\/\/[^\s]+\.(?:mp4|webm|mov)(?:\?[^\s]*)?)$/i,
+        html: (correspondencia: RegExpMatchArray) => {
+          const url = correspondencia[0]
+            .replaceAll("&", "&amp;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;");
+          return `<div style="position:relative;padding-bottom:56.25%;height:0"><video controls preload="metadata" src="${url}" style="position:absolute;width:100%;height:100%;left:0;top:0"></video></div>`;
+        },
+      },
+    ],
     resizeUnit: "%" as const,
     resizeOptions: [
       { name: "resizeMediaEmbed:original", value: null, icon: "original", label: "Largura original" },

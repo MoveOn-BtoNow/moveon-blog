@@ -236,6 +236,9 @@ footer.rodape-portal .rodape-legal{display:flex;flex-direction:column;align-item
 .editor-ckeditor-moveon .ck-content figure.media[data-largura-video="50"],.conteudo-formatado figure.media[data-largura-video="50"]{width:50%}
 .editor-ckeditor-moveon .ck-content figure.media[data-largura-video="75"],.conteudo-formatado figure.media[data-largura-video="75"]{width:75%}
 .editor-ckeditor-moveon .ck-content figure.media[data-largura-video="100"],.conteudo-formatado figure.media[data-largura-video="100"]{width:100%}
+.editor-ckeditor-moveon .ck-content figure.media[data-alinhamento="esquerda"],.conteudo-formatado figure.media[data-alinhamento="esquerda"]{margin-left:0;margin-right:auto}
+.editor-ckeditor-moveon .ck-content figure.media[data-alinhamento="centro"],.conteudo-formatado figure.media[data-alinhamento="centro"]{margin-left:auto;margin-right:auto}
+.editor-ckeditor-moveon .ck-content figure.media[data-alinhamento="direita"],.conteudo-formatado figure.media[data-alinhamento="direita"]{margin-left:auto;margin-right:0}
 @media(max-width:680px){.conteudo-formatado figure.media[data-largura-video]{width:100%}}
 .acao-integracao{display:flex;align-items:center;flex-wrap:wrap;gap:14px;margin-top:22px;padding-top:20px;border-top:1px solid var(--line)}
 .acao-integracao .primario{min-height:46px}
