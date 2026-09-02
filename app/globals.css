@@ -254,16 +254,16 @@ footer.rodape-portal .rodape-legal{display:flex;flex-direction:column;align-item
 
 /* Reforço responsivo da página Quem Somos. */
 .pagina-sobre{min-width:0;overflow-x:clip}.pagina-sobre main,.sobre-hero,.sobre-texto,.lideranca,.lider-destaque,.grade-lideres{min-width:0}
-.sobre-texto h1,.lideranca h2,.lider-nome h3{overflow-wrap:anywhere}
+.sobre-texto{width:100%;min-width:0}.sobre-texto h1,.lideranca h2,.lider-nome h3{max-width:100%;word-break:normal;overflow-wrap:break-word;hyphens:none}.sobre-texto p{max-width:100%;word-break:normal;overflow-wrap:normal}
 @media(max-width:1000px){
   .cabecalho-sobre{position:sticky}.cabecalho-sobre .nav{top:100%;max-height:calc(100dvh - 100px);overflow-y:auto;border-bottom:1px solid var(--line);box-shadow:0 18px 35px #0003}.cabecalho-sobre .nav a{min-height:48px;display:flex;align-items:center}
-  .sobre-hero{width:100%;padding-inline:clamp(24px,6vw,62px)}
+  .sobre-hero{width:100%;grid-template-columns:minmax(0,1fr);padding-inline:clamp(24px,6vw,62px)}
   .sobre-imagem{width:100%;aspect-ratio:16/10;min-height:0}.sobre-imagem img{min-height:0;height:100%;object-fit:cover}
   .sobre-indicadores,.lideranca{width:auto;margin-left:clamp(24px,6vw,62px);margin-right:clamp(24px,6vw,62px)}
 }
 @media(max-width:680px){
   .cabecalho-sobre{height:72px;padding:0 10px;gap:6px}.cabecalho-sobre .marca img{width:96px;height:auto}.cabecalho-sobre .acoes{gap:4px}.cabecalho-sobre .icon-btn,.cabecalho-sobre .theme,.cabecalho-sobre .menu{width:40px;height:40px;min-width:40px}.cabecalho-sobre .icon-btn svg,.cabecalho-sobre .theme svg,.cabecalho-sobre .menu svg{width:20px;height:20px}.cabecalho-sobre .nav{top:72px;max-height:calc(100dvh - 72px);padding:18px}
-  .sobre-hero{padding:34px 18px 38px;gap:28px}.sobre-voltar{min-height:48px}.sobre-texto>span{margin:22px 0 12px}.sobre-texto h1{font-size:clamp(32px,9.2vw,42px);line-height:1.08;letter-spacing:-.025em;margin-bottom:24px}.sobre-texto p{font-size:17px;line-height:1.68;margin-bottom:18px}
+  .sobre-hero{padding:34px 18px 38px;gap:28px}.sobre-voltar{min-height:48px}.sobre-texto>span{margin:22px 0 12px}.sobre-texto h1{width:100%;font-size:clamp(32px,9.2vw,42px);line-height:1.08;letter-spacing:-.025em;margin-bottom:24px;word-break:normal;overflow-wrap:normal}.sobre-texto p{width:100%;font-size:17px;line-height:1.68;margin-bottom:18px}
   .sobre-imagem{aspect-ratio:4/3;border-radius:20px}.sobre-imagem,.sobre-imagem img{min-height:0}
   .sobre-indicadores{margin:0 18px 68px;gap:14px}.sobre-indicadores article{min-height:155px;padding:25px;border-radius:20px}.sobre-indicadores strong{font-size:58px}.sobre-indicadores p{font-size:18px;margin-top:16px}
   .lideranca{margin:0 18px 75px}.lideranca>header{margin-bottom:28px}.lideranca>header h2{font-size:clamp(34px,9vw,44px)}.lider-destaque{border-radius:22px}.lider-destaque>img{height:auto;min-height:0;max-height:430px;aspect-ratio:4/5}.lider-destaque>div{padding:26px 20px}.lider-nome{gap:10px}.lider-nome h3{font-size:28px}.lider-nome a{width:46px;height:46px}.lider-destaque>div>p{margin:22px 0;font-size:17px;line-height:1.65}.lider-tags span{font-size:10px;padding:8px 10px}.grade-lideres{gap:15px}.lider-card{border-radius:20px}.lider-card>img{width:100%;height:auto;max-height:none;aspect-ratio:4/4.3;object-fit:cover}.lider-card>div{padding:20px}.lider-card .lider-nome h3{font-size:22px}
