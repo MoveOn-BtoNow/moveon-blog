@@ -320,6 +320,13 @@ export class RepositorioPainel {
     );
     return r.rows[0];
   }
+  async emailAdministradorEmUso(email: string, ignorarId: string) {
+    const resultado = await conexao.query(
+      "SELECT EXISTS(SELECT 1 FROM administradores WHERE lower(email)=lower($1) AND id<>$2) em_uso",
+      [email, ignorarId],
+    );
+    return Boolean(resultado.rows[0]?.em_uso);
+  }
   async atualizarAdministrador(
     id: string,
     nome: string,

@@ -83,11 +83,16 @@ export const configuracaoEntrada = z
   .strict();
 export const administradorEntrada = z
   .object({
-    nome: z.string().trim().min(2).max(120),
+    nome: z
+      .string()
+      .trim()
+      .min(2, "Informe um nome com pelo menos 2 caracteres.")
+      .max(120, "O nome deve ter no máximo 120 caracteres."),
     email: z
       .string()
       .trim()
-      .regex(/^[^\s@]+@[^\s@]+$/),
+      .max(254, "O e-mail deve ter no máximo 254 caracteres.")
+      .regex(/^[^\s@]+@[^\s@]+$/, "Informe um endereço de e-mail válido."),
     caminhoFoto: z
       .union([
         z
@@ -110,8 +115,9 @@ export const administradorEntrada = z
       .default(""),
     alterarEmail: z.boolean().default(false),
     alterarSenha: z.boolean().default(false),
-    senhaAtual: z.string().min(8).max(128).optional(),
-    novaSenha: z.string().min(12).max(128).optional(),
+    senhaAtual: z.string().min(8, "A senha atual deve ter pelo menos 8 caracteres.").max(128, "A senha atual é muito longa.").optional(),
+    novaSenha: z.string().min(12, "A nova senha deve ter pelo menos 12 caracteres.").max(128, "A nova senha é muito longa.").optional(),
+    confirmarNovaSenha: z.string().min(12, "A confirmação deve ter pelo menos 12 caracteres.").max(128, "A confirmação é muito longa.").optional(),
   })
   .strict()
   .superRefine((d, c) => {
@@ -126,6 +132,23 @@ export const administradorEntrada = z
         code: "custom",
         message: "Informe a nova senha.",
         path: ["novaSenha"],
+      });
+    if (d.alterarSenha && !d.confirmarNovaSenha)
+      c.addIssue({
+        code: "custom",
+        message: "Confirme a nova senha.",
+        path: ["confirmarNovaSenha"],
+      });
+    if (
+      d.alterarSenha &&
+      d.novaSenha &&
+      d.confirmarNovaSenha &&
+      d.novaSenha !== d.confirmarNovaSenha
+    )
+      c.addIssue({
+        code: "custom",
+        message: "A confirmação não corresponde à nova senha.",
+        path: ["confirmarNovaSenha"],
       });
   });
 

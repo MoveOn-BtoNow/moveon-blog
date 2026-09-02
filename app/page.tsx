@@ -203,11 +203,17 @@ async function api<T>(caminho: string, opcoes: RequestInit = {}): Promise<T> {
     const corpo = (await resposta.json().catch(() => ({}))) as {
       erro?: string;
       aguardeSegundos?: number;
+      errosCampos?: Record<string, string[]>;
+      detalhes?: { fieldErrors?: Record<string, string[]> };
     };
     const erro = new Error(
       corpo.erro || "Não foi possível concluir a operação.",
-    ) as Error & { aguardeSegundos?: number };
+    ) as Error & {
+      aguardeSegundos?: number;
+      errosCampos?: Record<string, string[]>;
+    };
     erro.aguardeSegundos = corpo.aguardeSegundos;
+    erro.errosCampos = corpo.errosCampos || corpo.detalhes?.fieldErrors;
     throw erro;
   }
   return resposta.status === 204 ? (undefined as T) : resposta.json();
@@ -3065,10 +3071,12 @@ function DadosAdmin({
       caminhoFoto: dados.caminhoFoto || "",
       senhaAtual: "",
       novaSenha: "",
+      confirmarNovaSenha: "",
       alterarEmail: false,
       alterarSenha: false,
     }),
     [erro, setErro] = useState(""),
+    [errosCampos, setErrosCampos] = useState<Record<string, string[]>>({}),
     [enviandoFoto, setEnviandoFoto] = useState(false);
   useEffect(() => {
     setForm((atual) => ({
@@ -3089,15 +3097,27 @@ function DadosAdmin({
       setForm((atual) => ({ ...atual, caminhoFoto: caminho }));
     } catch (e) {
       setErro((e as Error).message);
+      setErrosCampos({ caminhoFoto: [(e as Error).message] });
     } finally {
       setEnviandoFoto(false);
     }
+  }
+  function limparErroCampo(campo: string) {
+    setErrosCampos((atuais) => {
+      const proximos = { ...atuais };
+      delete proximos[campo];
+      return proximos;
+    });
   }
   return (
     <form
       className="dash-card pagina2"
       onSubmit={async (e) => {
         e.preventDefault();
+        const botao = (e.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+        const acao = botao?.value || "perfil";
+        setErro("");
+        setErrosCampos({});
         try {
           const resultado = await api<{
             ok: boolean;
@@ -3108,13 +3128,11 @@ function DadosAdmin({
               nome: form.nome,
               email: form.email,
               caminhoFoto: form.caminhoFoto,
-              alterarEmail: form.alterarEmail,
-              alterarSenha: form.alterarSenha,
-              senhaAtual:
-                form.alterarEmail || form.alterarSenha
-                  ? form.senhaAtual
-                  : undefined,
-              novaSenha: form.alterarSenha ? form.novaSenha : undefined,
+              alterarEmail: acao === "email",
+              alterarSenha: acao === "senha",
+              senhaAtual: acao === "email" || acao === "senha" ? form.senhaAtual : undefined,
+              novaSenha: acao === "senha" ? form.novaSenha : undefined,
+              confirmarNovaSenha: acao === "senha" ? form.confirmarNovaSenha : undefined,
             }),
           });
           if (resultado.sessoesRevogadas) {
@@ -3132,18 +3150,26 @@ function DadosAdmin({
             ...form,
             senhaAtual: "",
             novaSenha: "",
+            confirmarNovaSenha: "",
             alterarEmail: false,
             alterarSenha: false,
           });
         } catch (e) {
-          setErro((e as Error).message);
+          const falha = e as Error & { errosCampos?: Record<string, string[]> };
+          setErro(falha.message);
+          setErrosCampos(falha.errosCampos || {});
+          window.setTimeout(() => {
+            document.querySelector<HTMLInputElement>(".dados-administrador [aria-invalid='true']")?.focus();
+          });
         }
       }}
+      noValidate
+      data-formulario="administrador"
     >
       <h2>Dados do administrador</h2>
       {erro && <div className="erro-api">{erro}</div>}
-      <div className="config-grid2">
-        <label className="foto-admin">
+      <div className="config-grid2 dados-administrador">
+        <label className={`foto-admin ${errosCampos.caminhoFoto?.length ? "campo-invalido" : ""}`}>
           Foto de perfil
           <div>
             {form.caminhoFoto ? (
@@ -3169,32 +3195,48 @@ function DadosAdmin({
               {enviandoFoto ? "Validando e enviando…" : "Selecionar foto"}
             </span>
           </div>
+          {errosCampos.caminhoFoto?.[0] && <small className="mensagem-campo-erro">{errosCampos.caminhoFoto[0]}</small>}
         </label>
-        <label>
+        <label className={errosCampos.nome?.length ? "campo-invalido" : ""}>
           Nome
           <input
             value={form.nome}
-            onChange={(e) => setForm({ ...form, nome: e.target.value })}
+            onChange={(e) => { setForm({ ...form, nome: e.target.value }); limparErroCampo("nome"); }}
+            aria-invalid={Boolean(errosCampos.nome?.length)}
           />
+          {errosCampos.nome?.[0] && <small className="mensagem-campo-erro">{errosCampos.nome[0]}</small>}
         </label>
-        <label>
+        <button type="submit" name="acao" value="perfil" className="salvar2">Salvar perfil</button>
+        <label className={errosCampos.email?.length ? "campo-invalido" : ""}>
           E-mail
           <div className="campo-protegido">
             <input
               value={form.email}
               disabled={!form.alterarEmail}
-              onChange={(e) => setForm({ ...form, email: e.target.value })}
+              onChange={(e) => { setForm({ ...form, email: e.target.value }); limparErroCampo("email"); }}
+              aria-invalid={Boolean(errosCampos.email?.length)}
             />
             <button
               type="button"
               onClick={() =>
-                setForm({ ...form, alterarEmail: !form.alterarEmail })
+                setForm({ ...form, alterarEmail: !form.alterarEmail, alterarSenha: false, senhaAtual: "", novaSenha: "", confirmarNovaSenha: "" })
               }
             >
               {form.alterarEmail ? "Cancelar" : "Alterar e-mail"}
             </button>
           </div>
+          {errosCampos.email?.[0] && <small className="mensagem-campo-erro">{errosCampos.email[0]}</small>}
         </label>
+        {form.alterarEmail && (
+          <>
+            <label className={errosCampos.senhaAtual?.length ? "campo-invalido" : ""}>
+              Senha atual para confirmar o e-mail
+              <input type="password" value={form.senhaAtual} onChange={(e) => { setForm({ ...form, senhaAtual: e.target.value }); limparErroCampo("senhaAtual"); }} aria-invalid={Boolean(errosCampos.senhaAtual?.length)} autoComplete="current-password" />
+              {errosCampos.senhaAtual?.[0] && <small className="mensagem-campo-erro">{errosCampos.senhaAtual[0]}</small>}
+            </label>
+            <button type="submit" name="acao" value="email" className="salvar2">Salvar novo e-mail</button>
+          </>
+        )}
         <button
           type="button"
           className="habilitar-senha"
@@ -3202,7 +3244,10 @@ function DadosAdmin({
             setForm({
               ...form,
               alterarSenha: !form.alterarSenha,
+              alterarEmail: false,
+              senhaAtual: "",
               novaSenha: "",
+              confirmarNovaSenha: "",
             })
           }
         >
@@ -3210,28 +3255,34 @@ function DadosAdmin({
             ? "Cancelar alteração de senha"
             : "Alterar minha senha"}
         </button>
-        {(form.alterarEmail || form.alterarSenha) && (
-          <label>
+        {form.alterarSenha && (
+          <label className={errosCampos.senhaAtual?.length ? "campo-invalido" : ""}>
             Senha atual
             <input
               type="password"
               value={form.senhaAtual}
-              onChange={(e) => setForm({ ...form, senhaAtual: e.target.value })}
+              onChange={(e) => { setForm({ ...form, senhaAtual: e.target.value }); limparErroCampo("senhaAtual"); }}
+              aria-invalid={Boolean(errosCampos.senhaAtual?.length)}
+              autoComplete="current-password"
             />
+            {errosCampos.senhaAtual?.[0] && <small className="mensagem-campo-erro">{errosCampos.senhaAtual[0]}</small>}
           </label>
         )}
         {form.alterarSenha && (
-          <label>
-            Nova senha
-            <input
-              type="password"
-              value={form.novaSenha}
-              onChange={(e) => setForm({ ...form, novaSenha: e.target.value })}
-              minLength={12}
-            />
-          </label>
+          <>
+            <label className={errosCampos.novaSenha?.length ? "campo-invalido" : ""}>
+              Nova senha
+              <input type="password" value={form.novaSenha} onChange={(e) => { setForm({ ...form, novaSenha: e.target.value }); limparErroCampo("novaSenha"); }} aria-invalid={Boolean(errosCampos.novaSenha?.length)} autoComplete="new-password" />
+              {errosCampos.novaSenha?.[0] && <small className="mensagem-campo-erro">{errosCampos.novaSenha[0]}</small>}
+            </label>
+            <label className={errosCampos.confirmarNovaSenha?.length ? "campo-invalido" : ""}>
+              Confirmar nova senha
+              <input type="password" value={form.confirmarNovaSenha} onChange={(e) => { setForm({ ...form, confirmarNovaSenha: e.target.value }); limparErroCampo("confirmarNovaSenha"); }} aria-invalid={Boolean(errosCampos.confirmarNovaSenha?.length)} autoComplete="new-password" />
+              {errosCampos.confirmarNovaSenha?.[0] && <small className="mensagem-campo-erro">{errosCampos.confirmarNovaSenha[0]}</small>}
+            </label>
+            <button type="submit" name="acao" value="senha" className="salvar2">Alterar senha</button>
+          </>
         )}
-        <button className="salvar2">Atualizar administrador</button>
       </div>
     </form>
   );

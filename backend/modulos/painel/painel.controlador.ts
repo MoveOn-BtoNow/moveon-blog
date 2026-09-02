@@ -282,7 +282,10 @@ export class ControladorPainel {
     if (!validacao.success)
       return void resposta
         .status(400)
-        .json({ erro: "Revise os dados do administrador." });
+        .json({
+          erro: "Corrija os campos destacados.",
+          errosCampos: validacao.error.flatten().fieldErrors,
+        });
     const atual = await repositorio.administrador(
       resposta.locals.administrador.id,
     );
@@ -293,15 +296,27 @@ export class ControladorPainel {
     )
       return void resposta.status(400).json({
         erro: "A foto enviada não foi encontrada no armazenamento do portal.",
+        errosCampos: { caminhoFoto: ["Envie novamente uma foto válida."] },
       });
     if (
       (validacao.data.alterarEmail || validacao.data.alterarSenha) &&
       !(await compare(validacao.data.senhaAtual!, atual.senha_hash))
     )
-      return void resposta.status(400).json({ erro: "Senha atual incorreta." });
+      return void resposta.status(400).json({
+        erro: "A senha atual está incorreta.",
+        errosCampos: { senhaAtual: ["Digite corretamente a senha atual."] },
+      });
     const email = validacao.data.alterarEmail
       ? validacao.data.email
       : atual.email;
+    if (
+      validacao.data.alterarEmail &&
+      (await repositorio.emailAdministradorEmUso(email, atual.id))
+    )
+      return void resposta.status(409).json({
+        erro: "Este e-mail já está sendo utilizado.",
+        errosCampos: { email: ["Informe outro endereço de e-mail."] },
+      });
     const novaHash = validacao.data.alterarSenha
       ? await hash(validacao.data.novaSenha!, ambiente.CUSTO_HASH_SENHA)
       : undefined;
