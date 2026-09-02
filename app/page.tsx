@@ -532,6 +532,7 @@ function Portal({ aoAdministrar }: { aoAdministrar: () => void }) {
     [cursor, setCursor] = useState<string | null>(null),
     [carregandoMais, setCarregandoMais] = useState(false),
     sentinela = useRef<HTMLDivElement>(null),
+    campoBusca = useRef<HTMLInputElement>(null),
     temaInicializado = useRef(false);
   useEffect(() => {
     api<DadosPortal>("/portal/inicial")
@@ -610,6 +611,21 @@ function Portal({ aoAdministrar }: { aoAdministrar: () => void }) {
     );
     return () => cancelAnimationFrame(quadro);
   }, []);
+  useEffect(() => {
+    if (!busca) return;
+    const transbordamentoAnterior = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const quadro = requestAnimationFrame(() => campoBusca.current?.focus());
+    const fecharComEscape = (evento: KeyboardEvent) => {
+      if (evento.key === "Escape") setBusca(false);
+    };
+    document.addEventListener("keydown", fecharComEscape);
+    return () => {
+      cancelAnimationFrame(quadro);
+      document.body.style.overflow = transbordamentoAnterior;
+      document.removeEventListener("keydown", fecharComEscape);
+    };
+  }, [busca]);
   useEffect(() => {
     if (!temaInicializado.current) return;
     document.documentElement.dataset.theme = escuro ? "dark" : "light";
@@ -702,6 +718,13 @@ function Portal({ aoAdministrar }: { aoAdministrar: () => void }) {
     setCategoria(c?.nome || "");
     setLimite(6);
     if (c) registrar({ tipo: "clique_categoria", categoriaId: c.id });
+  }
+  function limparPesquisa() {
+    setTermo("");
+    setBusca(false);
+    requestAnimationFrame(() =>
+      document.getElementById("publicacoes")?.scrollIntoView({ block: "start" }),
+    );
   }
   function abrir(p: Publicacao) {
     registrar({ tipo: "visualizacao", publicacaoId: p.id });
@@ -863,29 +886,69 @@ function Portal({ aoAdministrar }: { aoAdministrar: () => void }) {
           className="busca-overlay"
           onMouseDown={(e) => e.target === e.currentTarget && setBusca(false)}
         >
-          <div className="busca-modal">
-            <button className="fechar-busca" onClick={() => setBusca(false)}>
+          <div
+            className="busca-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="titulo-busca-portal"
+          >
+            <button
+              type="button"
+              className="fechar-busca"
+              aria-label="Fechar pesquisa"
+              onClick={() => setBusca(false)}
+            >
               <X />
             </button>
             <span>BUSCA NO BANCO</span>
-            <h2>O que você procura?</h2>
-            <div className="campo-busca">
+            <h2 id="titulo-busca-portal">O que você procura?</h2>
+            <p id="ajuda-busca-portal">
+              Pesquise pelo título, conteúdo, categoria ou assunto.
+            </p>
+            <form
+              className="campo-busca"
+              role="search"
+              onSubmit={(evento) => {
+                evento.preventDefault();
+                if (!termo.trim()) return campoBusca.current?.focus();
+                setBusca(false);
+                registrar({ tipo: "busca", referencia: termo.trim() });
+                requestAnimationFrame(() =>
+                  document
+                    .getElementById("publicacoes")
+                    ?.scrollIntoView({ block: "start" }),
+                );
+              }}
+            >
               <Search />
+              <label className="somente-leitor" htmlFor="busca-publicacoes">
+                Termo da pesquisa
+              </label>
               <input
-                autoFocus
+                ref={campoBusca}
+                id="busca-publicacoes"
+                type="search"
+                inputMode="search"
+                enterKeyHint="search"
+                autoComplete="off"
+                aria-describedby="ajuda-busca-portal"
                 value={termo}
                 onChange={(e) => setTermo(e.target.value)}
                 placeholder="Título, conteúdo, categoria ou assunto"
               />
-              <button
-                onClick={() => {
-                  setBusca(false);
-                  registrar({ tipo: "busca", referencia: termo });
-                }}
-              >
+              <button type="submit" disabled={!termo.trim()}>
                 Buscar
               </button>
-            </div>
+            </form>
+            {termo.trim() && (
+              <button
+                type="button"
+                className="limpar-busca-modal"
+                onClick={limparPesquisa}
+              >
+                <X /> Limpar pesquisa atual
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -986,6 +1049,19 @@ function Portal({ aoAdministrar }: { aoAdministrar: () => void }) {
           </div>
           <p>{dados.configuracoes.descricao}</p>
         </div>
+        {termo.trim() && (
+          <div className="busca-ativa" role="status" aria-live="polite">
+            <div>
+              <Search />
+              <span>
+                Resultados para <strong>“{termo.trim()}”</strong>
+              </span>
+            </div>
+            <button type="button" onClick={limparPesquisa}>
+              <X /> Limpar pesquisa e mostrar todas
+            </button>
+          </div>
+        )}
         <div className="categorias">
           <button
             className={!categoria ? "ativa" : ""}
