@@ -17,6 +17,33 @@ export function criarSlug(valor: string) {
     .replace(/(^-|-$)/g, "");
 }
 export class RepositorioPainel {
+  async contarReferenciasMidia(caminho: string) {
+    const resultado = await conexao.query(
+      `SELECT (
+        (SELECT count(*) FROM publicacoes WHERE imagem_capa_url=$1 OR imagem_social_url=$1 OR conteudo::text LIKE '%' || $1 || '%') +
+        (SELECT count(*) FROM administradores WHERE caminho_foto=$1) +
+        (SELECT count(*) FROM parceiros WHERE caminho_logo=$1) +
+        (SELECT count(*) FROM configuracoes_portal WHERE caminho_logo=$1 OR caminho_favicon=$1)
+      )::int quantidade`,
+      [caminho],
+    );
+    return Number(resultado.rows[0]?.quantidade || 0);
+  }
+
+  async listarReferenciasMidias() {
+    const resultado = await conexao.query(
+      `SELECT caminho FROM (
+         SELECT imagem_capa_url caminho FROM publicacoes
+         UNION ALL SELECT imagem_social_url FROM publicacoes
+         UNION ALL SELECT conteudo::text FROM publicacoes
+         UNION ALL SELECT caminho_foto FROM administradores
+         UNION ALL SELECT caminho_logo FROM parceiros
+         UNION ALL SELECT caminho_logo FROM configuracoes_portal
+         UNION ALL SELECT caminho_favicon FROM configuracoes_portal
+       ) referencias WHERE caminho IS NOT NULL`,
+    );
+    return resultado.rows.map((item: { caminho: string }) => item.caminho);
+  }
   async listarParceiros() {
     const resultado = await conexao.query('SELECT id,nome,caminho_logo "caminhoLogo",endereco_site "enderecoSite",ativo,ordem FROM parceiros ORDER BY ordem,nome');
     return resultado.rows;
@@ -25,6 +52,10 @@ export class RepositorioPainel {
     const resultado = id
       ? await conexao.query('UPDATE parceiros SET nome=$1,caminho_logo=$2,endereco_site=$3,ativo=$4,ordem=$5,atualizado_em=now() WHERE id=$6 RETURNING id,nome,caminho_logo "caminhoLogo",endereco_site "enderecoSite",ativo,ordem',[dados.nome,dados.caminhoLogo,dados.enderecoSite||null,dados.ativo,dados.ordem,id])
       : await conexao.query('INSERT INTO parceiros(nome,caminho_logo,endereco_site,ativo,ordem) VALUES($1,$2,$3,$4,$5) RETURNING id,nome,caminho_logo "caminhoLogo",endereco_site "enderecoSite",ativo,ordem',[dados.nome,dados.caminhoLogo,dados.enderecoSite||null,dados.ativo,dados.ordem]);
+    return resultado.rows[0] ?? null;
+  }
+  async obterParceiro(id: string) {
+    const resultado = await conexao.query('SELECT id,caminho_logo "caminhoLogo" FROM parceiros WHERE id=$1', [id]);
     return resultado.rows[0] ?? null;
   }
   async excluirParceiro(id: string) {
@@ -189,7 +220,8 @@ export class RepositorioPainel {
     }
   }
   async excluirPublicacao(id: string) {
-    await conexao.query("DELETE FROM publicacoes WHERE id=$1", [id]);
+    const resultado = await conexao.query("DELETE FROM publicacoes WHERE id=$1 RETURNING id", [id]);
+    return resultado.rowCount === 1;
   }
   async listarCategorias() {
     const r = await conexao.query(

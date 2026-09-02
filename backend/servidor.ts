@@ -4,6 +4,7 @@ import { encerrarConexao } from "./infraestrutura/banco/conexao";
 import { servicoNewsletter } from "./modulos/newsletter/newsletter.servico";
 import { configurarOpenTelemetry,encerrarOpenTelemetry } from "./infraestrutura/observabilidade/open-telemetry";
 import { filaRedis } from "./infraestrutura/filas/fila-redis";
+import { limparMidiasOrfas } from "./modulos/painel/limpeza-midias.servico";
 
 const aplicacao = criarAplicacao();
 void configurarOpenTelemetry().catch(erro=>console.error("Falha ao configurar OpenTelemetry:",erro));
@@ -25,10 +26,20 @@ void servicoNewsletter.publicarAgendadas().catch((erro) =>
 void filaRedis
   .iniciarConsumidor(() => servicoNewsletter.processar())
   .catch((erro) => console.error("Falha ao iniciar consumidor Redis:", erro));
+const executarLimpezaMidias = () =>
+  void limparMidiasOrfas()
+    .then((quantidade) => quantidade > 0 && console.log(`${quantidade} mídia(s) órfã(s) removida(s).`))
+    .catch((erro) => console.error("Falha ao limpar mídias órfãs:", erro));
+const temporizadorLimpezaMidias = setInterval(
+  executarLimpezaMidias,
+  ambiente.INTERVALO_LIMPEZA_MIDIAS_MINUTOS * 60_000,
+);
+setTimeout(executarLimpezaMidias, 30_000);
 
 async function encerrarServidor(sinal: string): Promise<void> {
   console.log(`Encerrando API após ${sinal}...`);
   clearInterval(temporizadorNewsletter);
+  clearInterval(temporizadorLimpezaMidias);
   servidor.close(async () => {
     await encerrarOpenTelemetry().catch(()=>undefined);
     await filaRedis.encerrar();

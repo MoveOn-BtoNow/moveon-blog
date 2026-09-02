@@ -175,6 +175,22 @@ export async function armazenarImagemConteudo(arquivo?: Express.Multer.File) {
   return `/uploads/conteudos/${nome}`;
 }
 
+export async function armazenarLogo(arquivo?: Express.Multer.File) {
+  if (!arquivo) throw new Error("Selecione uma imagem.");
+  const tipo = await fileTypeFromBuffer(arquivo.buffer);
+  if (!tipo || !formatos.has(tipo.mime))
+    throw new Error("Formato inválido. Envie JPEG, PNG, WebP ou AVIF.");
+  const nome = `${randomUUID()}.webp`;
+  const imagem = criarProcessadorImagem(arquivo.buffer, {
+    failOn: "error", limitInputPixels: false, sequentialRead: true,
+  }).rotate().resize({ width: 1200, height: 1200, fit: "inside", withoutEnlargement: true, fastShrinkOnLoad: true }).webp({ quality: 88 });
+  if (await usarS3())
+    return enviarObjeto(`conteudos/${nome}`, await imagem.toBuffer(), "image/webp");
+  await mkdir(pastaConteudos, { recursive: true });
+  await imagem.toFile(path.join(pastaConteudos, nome));
+  return `/uploads/conteudos/${nome}`;
+}
+
 export async function fotoPerfilExiste(caminho?: string | null) {
   if (await objetoExiste(caminho)) return true;
   if (!caminho?.startsWith("/uploads/perfis/")) return false;

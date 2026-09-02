@@ -32,6 +32,8 @@ const esquemaAmbiente = z.object({
   MAX_IMAGEM_CAPA_MB: z.coerce.number().int().min(1).max(20),
   MAX_VIDEO_MB: z.coerce.number().int().min(10).max(1000),
   LIMITE_PUBLICACOES_DESTAQUE: z.coerce.number().int().min(1).max(20),
+  LIMPEZA_MIDIAS_ORFAS_HORAS: z.coerce.number().int().min(1).max(720).default(24),
+  INTERVALO_LIMPEZA_MIDIAS_MINUTOS: z.coerce.number().int().min(10).max(10080).default(360),
   EMAIL_ATIVO: z.string().transform((v) => v.toLowerCase() === "true"),
   SMTP_HOST: z.string().min(1),
   SMTP_PORTA: z.coerce.number().int().min(1).max(65535),

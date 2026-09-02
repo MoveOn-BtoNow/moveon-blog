@@ -14,8 +14,7 @@ import {
   armazenarCapa,
   armazenarFotoPerfil,
   armazenarImagemConteudo,
-  excluirCapaGerenciada,
-  excluirFotoPerfil,
+  armazenarLogo,
   excluirMidiaGerenciada,
   extrairUrlsDeMidia,
   fotoPerfilExiste,
@@ -28,6 +27,17 @@ import { armazenarVideo } from "./armazenamento-videos";
 
 const repositorio = new RepositorioPainel();
 const idParametro = (requisicao: Request) => String(requisicao.params.id);
+async function excluirSeNaoUtilizada(caminho?: string | null) {
+  if (!caminho) return;
+  try {
+    if ((await repositorio.contarReferenciasMidia(caminho)) === 0)
+      await excluirMidiaGerenciada(caminho);
+  } catch (erro) {
+    // A persistência principal já foi concluída. A rotina periódica tentará
+    // novamente sem devolver um falso erro ao administrador.
+    console.error("Falha ao excluir mídia substituída; limpeza reagendada:", erro);
+  }
+}
 
 export class ControladorPainel {
   enviarImagemConteudo = async (requisicao: Request, resposta: Response) => {
@@ -48,12 +58,16 @@ export class ControladorPainel {
     const validacao = parceiroEntrada.safeParse(requisicao.body);
     if (!validacao.success)
       return void resposta.status(400).json({ erro: "Revise os dados do parceiro.", detalhes: validacao.error.flatten() });
-    const item = await repositorio.salvarParceiro(validacao.data, requisicao.params.id ? idParametro(requisicao) : undefined);
+    const id = requisicao.params.id ? idParametro(requisicao) : undefined;
+    const anterior = id ? await repositorio.obterParceiro(id) : null;
+    const item = await repositorio.salvarParceiro(validacao.data, id);
+    if (anterior?.caminhoLogo && anterior.caminhoLogo !== validacao.data.caminhoLogo)
+      await excluirSeNaoUtilizada(anterior.caminhoLogo);
     resposta.status(requisicao.params.id ? 200 : 201).json(item);
   };
   excluirParceiro = async (requisicao: Request, resposta: Response) => {
     const item = await repositorio.excluirParceiro(idParametro(requisicao));
-    await excluirCapaGerenciada(item?.caminhoLogo);
+    await excluirSeNaoUtilizada(item?.caminhoLogo);
     resposta.status(204).end();
   };
   obterExibicaoCarrosselParceiros = async (_: Request, resposta: Response) =>
@@ -72,6 +86,13 @@ export class ControladorPainel {
       resposta.status(400).json({
         erro: erro instanceof Error ? erro.message : "Imagem inválida.",
       });
+    }
+  };
+  enviarLogo = async (requisicao: Request, resposta: Response) => {
+    try {
+      resposta.status(201).json({ caminho: await armazenarLogo(requisicao.file) });
+    } catch (erro) {
+      resposta.status(400).json({ erro: erro instanceof Error ? erro.message : "Imagem inválida." });
     }
   };
   enviarFotoPerfil = async (requisicao: Request, resposta: Response) => {
@@ -151,18 +172,18 @@ export class ControladorPainel {
       anterior?.imagemCapaUrl &&
       anterior.imagemCapaUrl !== validacao.data.imagemCapaUrl
     )
-      await excluirCapaGerenciada(anterior.imagemCapaUrl);
+      await excluirSeNaoUtilizada(anterior.imagemCapaUrl);
     if (
       anterior?.imagemSocialUrl &&
       anterior.imagemSocialUrl !== validacao.data.imagemSocialUrl
     )
-      await excluirCapaGerenciada(anterior.imagemSocialUrl);
+      await excluirSeNaoUtilizada(anterior.imagemSocialUrl);
     const urlsAnteriores = extrairUrlsDeMidia(anterior?.conteudo);
     const urlsAtuais = extrairUrlsDeMidia(validacao.data.conteudo);
     await Promise.all(
       [...urlsAnteriores]
         .filter((url) => !urlsAtuais.has(url))
-        .map((url) => excluirMidiaGerenciada(url)),
+        .map((url) => excluirSeNaoUtilizada(url)),
     );
     resposta.json({ ok: true });
   };
@@ -172,14 +193,14 @@ export class ControladorPainel {
       return void resposta
         .status(404)
         .json({ erro: "Publicação não encontrada." });
+    await repositorio.excluirPublicacao(idParametro(requisicao));
     await Promise.all([
-      excluirMidiaGerenciada(item?.imagemCapaUrl),
-      excluirMidiaGerenciada(item?.imagemSocialUrl),
+      excluirSeNaoUtilizada(item?.imagemCapaUrl),
+      excluirSeNaoUtilizada(item?.imagemSocialUrl),
       ...[...extrairUrlsDeMidia(item?.conteudo)].map((url) =>
-        excluirMidiaGerenciada(url),
+        excluirSeNaoUtilizada(url),
       ),
     ]);
-    await repositorio.excluirPublicacao(idParametro(requisicao));
     resposta.status(204).end();
   };
   listarCategorias = async (_: Request, resposta: Response) =>
@@ -225,10 +246,17 @@ export class ControladorPainel {
       return void resposta
         .status(400)
         .json({ erro: "Revise as configurações." });
+    const anterior = await repositorio.configuracoes();
     await repositorio.atualizarConfiguracoes(
       validacao.data,
       resposta.locals.administrador.id,
     );
+    await Promise.all([
+      anterior?.caminhoLogo && anterior.caminhoLogo !== validacao.data.caminhoLogo
+        ? excluirSeNaoUtilizada(anterior.caminhoLogo) : Promise.resolve(),
+      anterior?.caminhoFavicon && anterior.caminhoFavicon !== validacao.data.caminhoFavicon
+        ? excluirSeNaoUtilizada(anterior.caminhoFavicon) : Promise.resolve(),
+    ]);
     resposta.json({ ok: true });
   };
   obterAdministrador = async (_: Request, resposta: Response) => {
@@ -289,7 +317,7 @@ export class ControladorPainel {
       resposta.setHeader("Set-Cookie", criarCookieExpirado());
     }
     if (atual.caminhoFoto && atual.caminhoFoto !== validacao.data.caminhoFoto)
-      await excluirFotoPerfil(atual.caminhoFoto);
+      await excluirSeNaoUtilizada(atual.caminhoFoto);
     resposta.json({
       ok: true,
       sessoesRevogadas: validacao.data.alterarSenha,

@@ -2,6 +2,7 @@ import {
   DeleteObjectCommand,
   GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -91,6 +92,37 @@ function chaveUrl(url: string, c: ConfigS3) {
     if (url.startsWith(prefixo)) return decodeURIComponent(url.slice(prefixo.length));
   }
   return null;
+}
+export async function obterChaveObjeto(url?: string | null) {
+  if (!url) return null;
+  return chaveUrl(url, await configuracao());
+}
+
+export async function listarObjetosGerenciados() {
+  const c = await configuracao();
+  if (c.armazenamentoModo !== "s3") return [];
+  const objetos: Array<{ chave: string; alteradoEm: Date }> = [];
+  for (const prefixo of ["capas/", "sociais/", "conteudos/", "videos/", "perfis/"]) {
+    let continuacao: string | undefined;
+    do {
+      const pagina = await cliente(c).send(new ListObjectsV2Command({
+        Bucket: c.s3Bucket,
+        Prefix: prefixo,
+        ContinuationToken: continuacao,
+      }));
+      for (const objeto of pagina.Contents ?? [])
+        if (objeto.Key && objeto.LastModified)
+          objetos.push({ chave: objeto.Key, alteradoEm: objeto.LastModified });
+      continuacao = pagina.IsTruncated ? pagina.NextContinuationToken : undefined;
+    } while (continuacao);
+  }
+  return objetos;
+}
+
+export async function excluirObjetoPorChave(chave: string) {
+  const c = await configuracao();
+  if (c.armazenamentoModo !== "s3") return;
+  await cliente(c).send(new DeleteObjectCommand({ Bucket: c.s3Bucket, Key: chave }));
 }
 export async function entregarObjeto(requisicao: Request, resposta: Response) {
   const pasta = String(requisicao.params.pasta || "");

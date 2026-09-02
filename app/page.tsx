@@ -4134,10 +4134,10 @@ function GestaoParceiros({
                 if (!arquivo) return;
                 setEnviando(true);
                 try {
-                  const imagem = await enviarImagemCapa(arquivo);
+                  const caminho = await enviarImagemGenerica("/painel/uploads/logos", arquivo);
                   setForm((atual) => ({
                     ...atual,
-                    caminhoLogo: imagem.caminho,
+                    caminhoLogo: caminho,
                   }));
                 } catch (erroUpload) {
                   setErro((erroUpload as Error).message);
