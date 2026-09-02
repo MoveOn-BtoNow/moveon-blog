@@ -259,6 +259,14 @@ export class ControladorPainel {
       resposta.locals.administrador.id,
     );
     if (
+      validacao.data.caminhoFoto &&
+      validacao.data.caminhoFoto !== atual.caminhoFoto &&
+      !(await fotoPerfilExiste(validacao.data.caminhoFoto))
+    )
+      return void resposta.status(400).json({
+        erro: "A foto enviada não foi encontrada no armazenamento do portal.",
+      });
+    if (
       (validacao.data.alterarEmail || validacao.data.alterarSenha) &&
       !(await compare(validacao.data.senhaAtual!, atual.senha_hash))
     )

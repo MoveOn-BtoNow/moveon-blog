@@ -92,7 +92,18 @@ export const administradorEntrada = z
       .union([
         z
           .string()
-          .regex(/^\/uploads\/perfis\/[a-f0-9-]+\.(jpg|png|webp|avif)$/i),
+          .max(1200)
+          .refine(
+            (caminho) =>
+              /^\/uploads\/perfis\/[a-f0-9-]+\.(?:jpg|png|webp|avif)$/i.test(
+                caminho,
+              ) ||
+              /^\/api\/portal\/midias\/perfis\/[a-f0-9-]+\.webp$/i.test(
+                caminho,
+              ) ||
+              /^https:\/\/[^\s]+$/i.test(caminho),
+            "Informe uma foto de perfil gerenciada pela plataforma.",
+          ),
         z.literal(""),
       ])
       .optional()
