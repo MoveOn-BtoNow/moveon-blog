@@ -202,8 +202,13 @@ async function api<T>(caminho: string, opcoes: RequestInit = {}): Promise<T> {
   if (!resposta.ok) {
     const corpo = (await resposta.json().catch(() => ({}))) as {
       erro?: string;
+      aguardeSegundos?: number;
     };
-    throw new Error(corpo.erro || "Não foi possível concluir a operação.");
+    const erro = new Error(
+      corpo.erro || "Não foi possível concluir a operação.",
+    ) as Error & { aguardeSegundos?: number };
+    erro.aguardeSegundos = corpo.aguardeSegundos;
+    throw erro;
   }
   return resposta.status === 204 ? (undefined as T) : resposta.json();
 }
@@ -422,7 +427,9 @@ function Login({
     [erro, setErro] = useState(""),
     [enviando, setEnviando] = useState(false),
     [senhaAlterada, setSenhaAlterada] = useState(false),
-    [lembrarAcesso, setLembrarAcesso] = useState(false);
+    [lembrarAcesso, setLembrarAcesso] = useState(false),
+    [bloqueadoAte, setBloqueadoAte] = useState(0),
+    [segundosRestantes, setSegundosRestantes] = useState(0);
   useEffect(() => {
     setSenhaAlterada(
       new URLSearchParams(window.location.search).get("senha") === "alterada",
@@ -433,8 +440,23 @@ function Login({
       setLembrarAcesso(true);
     }
   }, []);
+  useEffect(() => {
+    if (!bloqueadoAte) return;
+    const atualizar = () => {
+      const segundos = Math.max(
+        0,
+        Math.ceil((bloqueadoAte - Date.now()) / 1000),
+      );
+      setSegundosRestantes(segundos);
+      if (segundos === 0) setBloqueadoAte(0);
+    };
+    atualizar();
+    const temporizador = window.setInterval(atualizar, 250);
+    return () => window.clearInterval(temporizador);
+  }, [bloqueadoAte]);
   async function entrar(e: FormEvent) {
     e.preventDefault();
+    if (segundosRestantes > 0) return;
     setEnviando(true);
     setErro("");
     try {
@@ -447,14 +469,17 @@ function Login({
       else localStorage.removeItem("moveon_email_administrador");
       aoEntrar(r.administrador);
     } catch (e) {
-      setErro((e as Error).message);
+      const falha = e as Error & { aguardeSegundos?: number };
+      if (falha.aguardeSegundos && falha.aguardeSegundos > 0)
+        setBloqueadoAte(Date.now() + falha.aguardeSegundos * 1000);
+      setErro(falha.message);
     } finally {
       setEnviando(false);
     }
   }
   return (
     <main className="login-banco">
-      <form onSubmit={entrar}>
+      <form onSubmit={entrar} aria-busy={enviando}>
         <img src="/logo.png" alt="MOVE.ON" />
         <span>ACESSO ADMINISTRATIVO</span>
         <h1>Entrar no dashboard</h1>
@@ -473,6 +498,7 @@ function Login({
             placeholder="Digite o e-mail"
             required
             autoComplete="username"
+            disabled={segundosRestantes > 0}
           />
         </label>
         <label>
@@ -485,11 +511,13 @@ function Login({
               placeholder="Digite sua senha"
               required
               autoComplete="current-password"
+              disabled={segundosRestantes > 0}
             />
             <button
               type="button"
               onClick={() => setMostrarSenha((v) => !v)}
               aria-label={mostrarSenha ? "Ocultar senha" : "Mostrar senha"}
+              disabled={segundosRestantes > 0}
             >
               {mostrarSenha ? <EyeOff /> : <Eye />}
             </button>
@@ -500,15 +528,27 @@ function Login({
             type="checkbox"
             checked={lembrarAcesso}
             onChange={(evento) => setLembrarAcesso(evento.target.checked)}
+            disabled={segundosRestantes > 0}
           />
           <span>
             Lembrar meu acesso
             <small>Salva somente o e-mail neste dispositivo</small>
           </span>
         </label>
-        {erro && <div className="erro-api">{erro}</div>}
-        <button className="salvar2" disabled={enviando}>
-          <LogIn /> {enviando ? "Entrando…" : "Entrar"}
+        {erro && <div className="erro-api" role="alert">{erro}</div>}
+        {segundosRestantes > 0 && (
+          <div className="bloqueio-login" role="status" aria-live="polite">
+            Tente novamente em <strong>{segundosRestantes}s</strong>. O bloqueio
+            é controlado pelo servidor.
+          </div>
+        )}
+        <button className="salvar2" disabled={enviando || segundosRestantes > 0}>
+          <LogIn />{" "}
+          {segundosRestantes > 0
+            ? `Bloqueado por ${segundosRestantes}s`
+            : enviando
+              ? "Entrando…"
+              : "Entrar"}
         </button>
         <button type="button" className="link-voltar" onClick={aoVoltar}>
           ← Voltar ao portal

@@ -21,6 +21,8 @@ const esquemaAmbiente = z.object({
   MAX_TENTATIVAS_LOGIN: z.coerce.number().int().min(1).max(100),
   MAX_LOGINS_SIMULTANEOS_POR_IP: z.coerce.number().int().min(1).max(20),
   JANELA_TENTATIVAS_MINUTOS: z.coerce.number().int().min(1).max(1_440),
+  BLOQUEIO_LOGIN_INICIAL_SEGUNDOS: z.coerce.number().int().min(30).max(3600).default(60),
+  BLOQUEIO_LOGIN_MAX_DIAS: z.coerce.number().int().min(1).max(30).default(7),
   MAX_CADASTROS_NEWSLETTER_POR_IP: z.coerce.number().int().min(1).max(100),
   JANELA_NEWSLETTER_MINUTOS: z.coerce.number().int().min(1).max(10_080),
   NOME_COOKIE_VISITANTE: z.string().regex(/^[A-Za-z0-9_-]+$/),

@@ -23,10 +23,13 @@ export class ControladorAutenticacao {
         : "entrada-invalida";
     resposta.setHeader("Cache-Control", "no-store");
     resposta.setHeader("Pragma", "no-cache");
-    if (await this.limitador.estaBloqueado(enderecoIp, identidade)) {
-      resposta
-        .status(429)
-        .json({ erro: "Muitas tentativas. Aguarde alguns minutos." });
+    const bloqueioAtual = await this.limitador.consultar(enderecoIp, identidade);
+    if (bloqueioAtual.bloqueado) {
+      resposta.setHeader("Retry-After", String(bloqueioAtual.aguardeSegundos));
+      resposta.status(429).json({
+        erro: "Acesso temporariamente bloqueado por segurança.",
+        aguardeSegundos: bloqueioAtual.aguardeSegundos,
+      });
       return;
     }
     if (!this.limitador.iniciar(enderecoIp)) {
@@ -37,8 +40,11 @@ export class ControladorAutenticacao {
     try {
       const validacao = esquemaCredenciais.safeParse(requisicao.body);
       if (!validacao.success) {
-        await this.limitador.registrarFalha(enderecoIp, identidade);
-        resposta.status(401).json({ erro: "E-mail ou senha incorretos." });
+        const bloqueio = await this.limitador.registrarFalha(enderecoIp, identidade);
+        if (bloqueio.bloqueado) {
+          resposta.setHeader("Retry-After", String(bloqueio.aguardeSegundos));
+          resposta.status(429).json({ erro: "Acesso temporariamente bloqueado por segurança.", aguardeSegundos: bloqueio.aguardeSegundos });
+        } else resposta.status(401).json({ erro: "E-mail ou senha incorretos." });
         return;
       }
 
@@ -48,8 +54,11 @@ export class ControladorAutenticacao {
       });
 
       if (!resultado) {
-        await this.limitador.registrarFalha(enderecoIp, identidade);
-        resposta.status(401).json({ erro: "E-mail ou senha incorretos." });
+        const bloqueio = await this.limitador.registrarFalha(enderecoIp, identidade);
+        if (bloqueio.bloqueado) {
+          resposta.setHeader("Retry-After", String(bloqueio.aguardeSegundos));
+          resposta.status(429).json({ erro: "Acesso temporariamente bloqueado por segurança.", aguardeSegundos: bloqueio.aguardeSegundos });
+        } else resposta.status(401).json({ erro: "E-mail ou senha incorretos." });
         return;
       }
 
