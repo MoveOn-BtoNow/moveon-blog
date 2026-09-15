@@ -16,7 +16,6 @@
 # next.js
 /.next/
 /.vinext/
-/.servico-externo/
 /out/
 
 # misc
