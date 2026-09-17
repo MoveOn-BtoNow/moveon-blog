@@ -529,6 +529,7 @@ function Login({
             </button>
           </div>
         </label>
+        <a className="link-recuperar-senha" href="/recuperar-senha">Esqueceu sua senha?</a>
         <label className="lembrar-acesso">
           <input
             type="checkbox"
