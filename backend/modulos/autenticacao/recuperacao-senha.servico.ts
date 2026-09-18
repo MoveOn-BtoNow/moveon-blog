@@ -39,6 +39,7 @@ export class ServicoRecuperacaoSenha {
             const url = new URL("/recuperar-senha", ambiente.URL_PUBLICA_PORTAL);
             url.searchParams.set("token", token);
             const transporte = nodemailer.createTransport({host: configuracao.host, port: configuracao.porta, secure: configuracao.seguro,
+              requireTLS: !configuracao.seguro, connectionTimeout: 10_000, greetingTimeout: 10_000, socketTimeout: 15_000,
               auth: configuracao.usuario ? {user: configuracao.usuario, pass: configuracao.senha} : undefined});
             await conexao.query("UPDATE recuperacoes_senha SET utilizado_em=now() WHERE administrador_id=$1 AND utilizado_em IS NULL", [administrador.id]);
             const registro = await conexao.query<{ id: string }>(

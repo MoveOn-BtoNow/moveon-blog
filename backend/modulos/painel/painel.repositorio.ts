@@ -383,13 +383,7 @@ export class RepositorioPainel {
   async configuracaoNewsletter() {
     const r = await conexao.query(
       `SELECT newsletter_assunto "assunto",newsletter_texto "texto",
-       exibir_newsletter "exibirNewsletter",email_ativo "emailAtivo",
-       coalesce(smtp_host,'') "smtpHost",smtp_porta "smtpPorta",smtp_seguro "smtpSeguro",
-       coalesce(smtp_usuario,'') "smtpUsuario",
-       coalesce(email_remetente_nome,'') "emailRemetenteNome",
-       coalesce(email_remetente_endereco,'') "emailRemetenteEndereco",
-       (smtp_senha_criptografada IS NOT NULL) "smtpSenhaConfigurada",
-       (email_segredo_cancelamento_criptografado IS NOT NULL) "emailSegredoConfigurado"
+       exibir_newsletter "exibirNewsletter"
        FROM configuracoes_portal WHERE id=1`,
     );
     return r.rows[0];
@@ -398,37 +392,12 @@ export class RepositorioPainel {
     assunto: string;
     texto: string;
     exibirNewsletter: boolean;
-    emailAtivo: boolean;
-    smtpHost: string;
-    smtpPorta: number;
-    smtpSeguro: boolean;
-    smtpUsuario: string;
-    emailRemetenteNome: string;
-    emailRemetenteEndereco: string;
-    smtpSenhaCriptografada?: string;
-    emailSegredoCriptografado?: string;
   }) {
     await conexao.query(
       `UPDATE configuracoes_portal SET newsletter_assunto=$1,newsletter_texto=$2,
-       exibir_newsletter=$3,email_ativo=$4,smtp_host=$5,smtp_porta=$6,smtp_seguro=$7,
-       smtp_usuario=$8,email_remetente_nome=$9,email_remetente_endereco=$10,
-       smtp_senha_criptografada=coalesce($11,smtp_senha_criptografada),
-       email_segredo_cancelamento_criptografado=coalesce($12,email_segredo_cancelamento_criptografado),
+       exibir_newsletter=$3,
        atualizado_em=now() WHERE id=1`,
-      [
-        dados.assunto,
-        dados.texto,
-        dados.exibirNewsletter,
-        dados.emailAtivo,
-        dados.smtpHost || null,
-        dados.smtpPorta,
-        dados.smtpSeguro,
-        dados.smtpUsuario || null,
-        dados.emailRemetenteNome,
-        dados.emailRemetenteEndereco,
-        dados.smtpSenhaCriptografada || null,
-        dados.emailSegredoCriptografado || null,
-      ],
+      [dados.assunto,dados.texto,dados.exibirNewsletter],
     );
   }
 }

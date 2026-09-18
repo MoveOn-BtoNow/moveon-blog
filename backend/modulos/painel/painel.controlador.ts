@@ -22,7 +22,6 @@ import {
 import { servicoNewsletter } from "../newsletter/newsletter.servico";
 import { z } from "zod";
 import { criarCookieExpirado } from "../../compartilhado/http/cookies";
-import { criptografarConfiguracao } from "../../compartilhado/seguranca/criptografia-configuracoes";
 import { armazenarVideo } from "./armazenamento-videos";
 
 const repositorio = new RepositorioPainel();
@@ -351,23 +350,7 @@ export class ControladorPainel {
   };
   obterModeloNewsletter = async (_req: Request, res: Response) => {
     const dados = await repositorio.configuracaoNewsletter();
-    res.json({
-      ...dados,
-      emailAtivo: dados.emailAtivo ?? ambiente.EMAIL_ATIVO,
-      smtpHost: dados.smtpHost || ambiente.SMTP_HOST,
-      smtpPorta: dados.smtpPorta || ambiente.SMTP_PORTA,
-      smtpSeguro: dados.smtpSeguro ?? ambiente.SMTP_SEGURO,
-      smtpUsuario: dados.smtpUsuario || ambiente.SMTP_USUARIO,
-      emailRemetenteNome:
-        dados.emailRemetenteNome || ambiente.EMAIL_REMETENTE_NOME,
-      emailRemetenteEndereco:
-        dados.emailRemetenteEndereco || ambiente.EMAIL_REMETENTE_ENDERECO,
-      smtpSenhaConfigurada:
-        dados.smtpSenhaConfigurada || Boolean(ambiente.SMTP_SENHA),
-      emailSegredoConfigurado:
-        dados.emailSegredoConfigurado ||
-        Boolean(ambiente.EMAIL_SEGREDO_CANCELAMENTO),
-    });
+    res.json(dados);
   };
   atualizarModeloNewsletter = async (req: Request, res: Response) => {
     const v = z
@@ -375,15 +358,6 @@ export class ControladorPainel {
         assunto: z.string().trim().min(3).max(180),
         texto: z.string().trim().min(10).max(5000),
         exibirNewsletter: z.boolean(),
-        emailAtivo: z.boolean(),
-        smtpHost: z.string().trim().max(255),
-        smtpPorta: z.number().int().min(1).max(65535),
-        smtpSeguro: z.boolean(),
-        smtpUsuario: z.string().trim().max(500),
-        smtpSenha: z.string().max(500).optional(),
-        emailRemetenteNome: z.string().trim().min(1).max(180),
-        emailRemetenteEndereco: z.string().trim().email().max(254),
-        emailSegredoCancelamento: z.string().min(32).max(500).optional(),
       })
       .strict()
       .safeParse(req.body);
@@ -391,15 +365,7 @@ export class ControladorPainel {
       return void res
         .status(400)
         .json({ erro: "Revise o modelo da newsletter." });
-    await repositorio.atualizarNewsletter({
-      ...v.data,
-      smtpSenhaCriptografada: v.data.smtpSenha
-        ? criptografarConfiguracao(v.data.smtpSenha)
-        : undefined,
-      emailSegredoCriptografado: v.data.emailSegredoCancelamento
-        ? criptografarConfiguracao(v.data.emailSegredoCancelamento)
-        : undefined,
-    });
+    await repositorio.atualizarNewsletter(v.data);
     res.json({ ok: true });
   };
 }

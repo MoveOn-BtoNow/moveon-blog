@@ -110,7 +110,8 @@ export class ServicoContato {
       transporte: nodemailer.createTransport({
         host: c.host,
         port: c.porta,
-        secure: c.seguro,
+          secure: c.seguro,
+          requireTLS: !c.seguro,
         auth: { user: c.usuario, pass: c.senha },
       }),
     };

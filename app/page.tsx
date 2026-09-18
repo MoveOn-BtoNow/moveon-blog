@@ -44,6 +44,7 @@ import {
   LogIn,
   Menu,
   Mail,
+  MailCheck,
   Moon,
   Pencil,
   Plus,
@@ -73,6 +74,7 @@ const PainelIntegracoes = lazy(() => import("./componentes/PainelIntegracoes"));
 const PainelConteudoLegal = lazy(
   () => import("./componentes/PainelConteudoLegal"),
 );
+const PainelServidorEmail = lazy(() => import("./componentes/PainelServidorEmail"));
 
 type Categoria = {
   id: string;
@@ -144,17 +146,6 @@ type ModeloNewsletterPainel = {
   assunto: string;
   texto: string;
   exibirNewsletter: boolean;
-  emailAtivo: boolean;
-  smtpHost: string;
-  smtpPorta: number;
-  smtpSeguro: boolean;
-  smtpUsuario: string;
-  smtpSenha: string;
-  smtpSenhaConfigurada: boolean;
-  emailRemetenteNome: string;
-  emailRemetenteEndereco: string;
-  emailSegredoCancelamento: string;
-  emailSegredoConfigurado: boolean;
 };
 type Tela =
   | "inicio"
@@ -165,6 +156,7 @@ type Tela =
   | "configuracoes"
   | "administrador"
   | "newsletter"
+  | "servidor_email"
   | "parceiros"
   | "contato"
   | "integracoes"
@@ -1294,6 +1286,7 @@ function Painel({
         "configuracoes",
         "administrador",
         "newsletter",
+        "servidor_email",
         "parceiros",
         "contato",
         "integracoes",
@@ -1422,6 +1415,7 @@ function Painel({
     ["categorias", "Categorias", <FolderTree />],
     ["metricas", "Métricas", <BarChart3 />],
     ["newsletter", "Newsletter", <Mail />],
+    ["servidor_email", "Servidor de e-mail", <MailCheck />],
     ["contato", "Contato", <Inbox />],
     ["integracoes", "Integrações", <Cloud />],
     ["consentimento", "Consentimento", <ShieldCheck />],
@@ -1593,6 +1587,7 @@ function Painel({
             />
           )}
           {tela === "newsletter" && <PainelNewsletter />}
+          {tela === "servidor_email" && <Suspense fallback={<div className="tela-estado">Carregando servidor de e-mail…</div>}><PainelServidorEmail /></Suspense>}
           {tela === "contato" && (
             <PainelContato versao={versaoContato} aoLer={setMensagensNovas} />
           )}
@@ -3758,20 +3753,8 @@ function PainelNewsletter() {
       assunto: "",
       texto: "",
       exibirNewsletter: true,
-      emailAtivo: false,
-      smtpHost: "",
-      smtpPorta: 587,
-      smtpSeguro: false,
-      smtpUsuario: "",
-      smtpSenha: "",
-      smtpSenhaConfigurada: false,
-      emailRemetenteNome: "MOVE.ON",
-      emailRemetenteEndereco: "",
-      emailSegredoCancelamento: "",
-      emailSegredoConfigurado: false,
     }),
     [erro, setErro] = useState(""),
-    [editandoServidor, setEditandoServidor] = useState(false),
     [salvando, setSalvando] = useState(false);
   const carregar = () =>
     Promise.all([
@@ -3780,11 +3763,7 @@ function PainelNewsletter() {
     ])
       .then(([lista, m]) => {
         setDados(lista);
-        setModelo({
-          ...m,
-          smtpSenha: "",
-          emailSegredoCancelamento: "",
-        });
+        setModelo(m);
       })
       .catch((e) => setErro(e.message));
   async function salvarModelo(ajustes: Partial<ModeloNewsletterPainel> = {}) {
@@ -3798,30 +3777,9 @@ function PainelNewsletter() {
           assunto: atualizado.assunto,
           texto: atualizado.texto,
           exibirNewsletter: atualizado.exibirNewsletter,
-          emailAtivo: atualizado.emailAtivo,
-          smtpHost: atualizado.smtpHost,
-          smtpPorta: Number(atualizado.smtpPorta),
-          smtpSeguro: atualizado.smtpSeguro,
-          smtpUsuario: atualizado.smtpUsuario,
-          smtpSenha: atualizado.smtpSenha || undefined,
-          emailRemetenteNome: atualizado.emailRemetenteNome,
-          emailRemetenteEndereco: atualizado.emailRemetenteEndereco,
-          emailSegredoCancelamento:
-            atualizado.emailSegredoCancelamento || undefined,
         }),
       });
       setErro("");
-      setEditandoServidor(false);
-      setModelo((valor) => ({
-        ...valor,
-        smtpSenha: "",
-        emailSegredoCancelamento: "",
-        smtpSenhaConfigurada:
-          valor.smtpSenhaConfigurada || Boolean(atualizado.smtpSenha),
-        emailSegredoConfigurado:
-          valor.emailSegredoConfigurado ||
-          Boolean(atualizado.emailSegredoCancelamento),
-      }));
     } catch (e) {
       setErro((e as Error).message);
     } finally {
@@ -3887,153 +3845,6 @@ function PainelNewsletter() {
         >
           {salvando ? "Salvando…" : "Salvar modelo"}
         </button>
-      </div>
-      <div className="dash-card servidor-email-admin">
-        <div className="card-head2">
-          <div>
-            <small>CONFIGURAÇÃO PROTEGIDA</small>
-            <h2>Servidor de e-mail</h2>
-          </div>
-          <button
-            type="button"
-            className="habilitar-servidor-email"
-            onClick={() => setEditandoServidor((valor) => !valor)}
-          >
-            {editandoServidor ? "Cancelar edição" : "Habilitar edição"}
-          </button>
-        </div>
-        <p className="nota-metrica">
-          Senha SMTP e segredo de cancelamento são criptografados e nunca são
-          exibidos novamente. Alterar o segredo invalida links de cancelamento
-          enviados anteriormente.
-        </p>
-        <div className="config-grid2">
-          <label className="check-email-ativo">
-            <span>EMAIL_ATIVO</span>
-            <input
-              type="checkbox"
-              checked={modelo.emailAtivo}
-              disabled={!editandoServidor}
-              onChange={(e) =>
-                setModelo({ ...modelo, emailAtivo: e.target.checked })
-              }
-            />
-          </label>
-          <label>
-            SMTP_HOST
-            <input
-              value={modelo.smtpHost}
-              disabled={!editandoServidor}
-              onChange={(e) =>
-                setModelo({ ...modelo, smtpHost: e.target.value })
-              }
-            />
-          </label>
-          <label>
-            SMTP_PORTA
-            <input
-              type="number"
-              min="1"
-              max="65535"
-              value={modelo.smtpPorta}
-              disabled={!editandoServidor}
-              onChange={(e) =>
-                setModelo({ ...modelo, smtpPorta: Number(e.target.value) })
-              }
-            />
-          </label>
-          <label className="check-email-ativo">
-            <span>SMTP_SEGURO</span>
-            <input
-              type="checkbox"
-              checked={modelo.smtpSeguro}
-              disabled={!editandoServidor}
-              onChange={(e) =>
-                setModelo({ ...modelo, smtpSeguro: e.target.checked })
-              }
-            />
-          </label>
-          <label>
-            SMTP_USUARIO
-            <input
-              value={modelo.smtpUsuario}
-              disabled={!editandoServidor}
-              autoComplete="username"
-              onChange={(e) =>
-                setModelo({ ...modelo, smtpUsuario: e.target.value })
-              }
-            />
-          </label>
-          <label>
-            SMTP_SENHA
-            <input
-              type="password"
-              value={modelo.smtpSenha}
-              disabled={!editandoServidor}
-              autoComplete="new-password"
-              placeholder={
-                modelo.smtpSenhaConfigurada
-                  ? "Senha configurada — digite apenas para alterar"
-                  : "Digite a senha SMTP"
-              }
-              onChange={(e) =>
-                setModelo({ ...modelo, smtpSenha: e.target.value })
-              }
-            />
-          </label>
-          <label>
-            EMAIL_REMETENTE_NOME
-            <input
-              value={modelo.emailRemetenteNome}
-              disabled={!editandoServidor}
-              onChange={(e) =>
-                setModelo({ ...modelo, emailRemetenteNome: e.target.value })
-              }
-            />
-          </label>
-          <label>
-            EMAIL_REMETENTE_ENDERECO
-            <input
-              type="email"
-              value={modelo.emailRemetenteEndereco}
-              disabled={!editandoServidor}
-              onChange={(e) =>
-                setModelo({ ...modelo, emailRemetenteEndereco: e.target.value })
-              }
-            />
-          </label>
-          <label className="segredo-email">
-            EMAIL_SEGREDO_CANCELAMENTO
-            <input
-              type="password"
-              minLength={32}
-              value={modelo.emailSegredoCancelamento}
-              disabled={!editandoServidor}
-              autoComplete="new-password"
-              placeholder={
-                modelo.emailSegredoConfigurado
-                  ? "Segredo configurado — digite apenas para alterar"
-                  : "Mínimo de 32 caracteres"
-              }
-              onChange={(e) =>
-                setModelo({
-                  ...modelo,
-                  emailSegredoCancelamento: e.target.value,
-                })
-              }
-            />
-          </label>
-          {editandoServidor && (
-            <button
-              type="button"
-              className="salvar2"
-              disabled={salvando}
-              onClick={() => void salvarModelo()}
-            >
-              {salvando ? "Salvando…" : "Salvar servidor de e-mail"}
-            </button>
-          )}
-        </div>
       </div>
       <div className="dash-card">
         <div className="card-head2">

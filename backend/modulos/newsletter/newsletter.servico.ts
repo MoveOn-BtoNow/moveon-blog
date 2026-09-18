@@ -136,6 +136,7 @@ export class ServicoNewsletter {
       host: configuracao.host,
       port: configuracao.porta,
       secure: configuracao.seguro,
+      requireTLS: !configuracao.seguro,
       auth: configuracao.usuario
         ? { user: configuracao.usuario, pass: configuracao.senha }
         : undefined,
