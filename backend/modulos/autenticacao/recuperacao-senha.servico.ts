@@ -8,27 +8,66 @@ import { obterConfiguracaoEmail } from "../newsletter/newsletter.servico";
 const mensagemGenerica = `Se o e-mail estiver cadastrado, enviaremos um link de recuperação. Confira também a caixa de spam. Para solicitar novamente, aguarde pelo menos ${ambiente.RECUPERACAO_INTERVALO_MINUTOS} minutos.`;
 const hashChave = (valor: string) => gerarHashSha256(valor.toLowerCase().trim());
 
-async function reservarLimite(tipo: "origem" | "identidade", chave: string, intervalo: number, maximo: number) {
-  const resultado = await conexao.query<{ permitido: boolean }>(
-    `INSERT INTO limites_recuperacao_senha(tipo,chave_hash,tentativas,janela_inicio,proximo_envio_em)
-     VALUES($1,$2,1,now(),now()+($3::int*interval '1 minute'))
-     ON CONFLICT(tipo,chave_hash) DO UPDATE SET
-       tentativas=CASE WHEN limites_recuperacao_senha.janela_inicio < now()-interval '1 hour' THEN 1 ELSE limites_recuperacao_senha.tentativas+1 END,
-       janela_inicio=CASE WHEN limites_recuperacao_senha.janela_inicio < now()-interval '1 hour' THEN now() ELSE limites_recuperacao_senha.janela_inicio END,
-       proximo_envio_em=now()+($3::int*interval '1 minute')
-     WHERE limites_recuperacao_senha.proximo_envio_em <= now()
-       AND (limites_recuperacao_senha.janela_inicio < now()-interval '1 hour' OR limites_recuperacao_senha.tentativas < $4::int)
-     RETURNING true permitido`, [tipo, hashChave(chave), intervalo, maximo]);
-  return resultado.rowCount === 1;
+type Limite = {tipo:"origem"|"identidade";hash:string;intervalo:number;maximo:number};
+type EstadoLimite = {tentativas:number;janelaInicio:Date;proximoEnvioEm:Date;agora:Date};
+
+async function reservarLimites(ip:string,email:string):Promise<{aguardeSegundos:number;motivo?:string}> {
+  const limites:Limite[]=[
+    {tipo:"origem",hash:hashChave(ip),intervalo:1,maximo:ambiente.RECUPERACAO_MAX_POR_IP_HORA},
+    {tipo:"identidade",hash:hashChave(email),intervalo:ambiente.RECUPERACAO_INTERVALO_MINUTOS,maximo:12},
+  ];
+  const cliente=await conexao.connect();
+  try {
+    await cliente.query("BEGIN");
+    const estados:EstadoLimite[]=[];
+    for(const limite of limites) {
+      await cliente.query(
+        `INSERT INTO limites_recuperacao_senha(tipo,chave_hash,tentativas,janela_inicio,proximo_envio_em)
+         VALUES($1,$2,0,now(),now()) ON CONFLICT(tipo,chave_hash) DO NOTHING`,
+        [limite.tipo,limite.hash]);
+      const consulta=await cliente.query<EstadoLimite>(
+        `SELECT tentativas,janela_inicio "janelaInicio",proximo_envio_em "proximoEnvioEm",now() "agora"
+         FROM limites_recuperacao_senha WHERE tipo=$1 AND chave_hash=$2 FOR UPDATE`,
+        [limite.tipo,limite.hash]);
+      estados.push(consulta.rows[0]);
+    }
+    const agora=estados[0].agora.getTime();
+    const esperas=estados.map((estado,indice)=>{
+      const inicio=estado.janelaInicio.getTime();
+      const janelaVigente=inicio+3_600_000>agora;
+      const fimJanela=janelaVigente && Number(estado.tentativas)>=limites[indice].maximo?inicio+3_600_000:agora;
+      return Math.max(0,Math.ceil((Math.max(estado.proximoEnvioEm.getTime(),fimJanela)-agora)/1000));
+    });
+    const aguardeSegundos=Math.max(...esperas);
+    if(aguardeSegundos>0) {
+      await cliente.query("ROLLBACK");
+      return {aguardeSegundos,motivo:esperas[0]>0?"origem":"identidade"};
+    }
+    for(let indice=0;indice<limites.length;indice++) {
+      const limite=limites[indice],estado=estados[indice];
+      const reiniciar=estado.janelaInicio.getTime()+3_600_000<=agora;
+      await cliente.query(
+        `UPDATE limites_recuperacao_senha SET tentativas=$3,
+         janela_inicio=CASE WHEN $4::boolean THEN now() ELSE janela_inicio END,
+         proximo_envio_em=now()+($5::int*interval '1 minute')
+         WHERE tipo=$1 AND chave_hash=$2`,
+        [limite.tipo,limite.hash,reiniciar?1:Number(estado.tentativas)+1,reiniciar,limite.intervalo]);
+    }
+    await cliente.query("COMMIT");
+    return {aguardeSegundos:0};
+  } catch(erro) {await cliente.query("ROLLBACK");throw erro;}
+  finally {cliente.release();}
 }
 
 export class ServicoRecuperacaoSenha {
-  async solicitar(email: string, ip: string): Promise<string> {
+  async solicitar(email: string, ip: string): Promise<{mensagem:string;aguardeSegundos:number}> {
     const inicio = Date.now();
+    let aguardeSegundos=0;
     try {
-      const origemPermitida = await reservarLimite("origem", ip, 1, ambiente.RECUPERACAO_MAX_POR_IP_HORA);
-      const identidadePermitida = origemPermitida && await reservarLimite("identidade", email, ambiente.RECUPERACAO_INTERVALO_MINUTOS, 12);
-      if (origemPermitida && identidadePermitida) {
+      const limite=await reservarLimites(ip,email);
+      aguardeSegundos=limite.aguardeSegundos;
+      if (aguardeSegundos) console.info("Recuperação limitada:",{motivo:limite.motivo,aguardeSegundos});
+      else {
         const usuario = await conexao.query<{ id: string; nome: string; email: string }>(
           "SELECT id,nome,email FROM administradores WHERE lower(email)=lower($1) AND ativo=true LIMIT 1", [email]);
         const administrador = usuario.rows[0];
@@ -51,13 +90,20 @@ export class ServicoRecuperacaoSenha {
                 subject: "Recuperação de senha — MOVE.ON",
                 text: `Olá, ${administrador.nome}.\n\nRecebemos uma solicitação para redefinir sua senha. Acesse o link em até ${ambiente.RECUPERACAO_EXPIRACAO_MINUTOS} minutos:\n${url}\n\nSe não foi você, ignore este e-mail. O link funciona apenas uma vez.`,
                 html: `<div style="font:17px Arial,sans-serif;max-width:620px;margin:auto;padding:32px;color:#222"><h1 style="color:#fe3000">MOVE.ON</h1><h2>Recuperação de senha</h2><p>Olá, ${administrador.nome.replace(/[&<>"']/g, "")}. Recebemos uma solicitação para redefinir sua senha.</p><p>Este link expira em ${ambiente.RECUPERACAO_EXPIRACAO_MINUTOS} minutos e funciona apenas uma vez.</p><p><a href="${url.toString().replace(/&/g, "&amp;")}" style="background:#fe3000;color:white;padding:14px 22px;border-radius:10px;display:inline-block;text-decoration:none">Criar nova senha</a></p><p>Se não foi você, ignore esta mensagem.</p></div>`,
+              }).then(async (retorno) => {
+                const aceito=retorno.accepted.some(destino=>
+                  (typeof destino==="string"?destino:destino.address).toLowerCase()===administrador.email.toLowerCase());
+                if (!aceito) {
+                  await conexao.query("DELETE FROM recuperacoes_senha WHERE id=$1", [registro.rows[0].id]);
+                  console.warn("Recuperação não enviada: destinatário rejeitado pelo SMTP.");
+                } else console.info("Recuperação: mensagem aceita pelo servidor SMTP.");
               }).catch(async (erro: unknown) => {
                 try { await conexao.query("DELETE FROM recuperacoes_senha WHERE id=$1", [registro.rows[0].id]); }
                 catch (falha) { console.error("Falha ao invalidar link não enviado:", falha); }
                 console.error("Falha ao enviar recuperação de senha:", erro);
               });
-          }
-        }
+          } else console.warn("Recuperação não enviada: serviço de e-mail desativado ou sem servidor SMTP.");
+        } else console.info("Recuperação não enviada: não há conta ativa para o endereço informado.");
       }
     } catch (erro) {
       // Resposta pública idêntica inclusive quando o provedor de e-mail falhar.
@@ -66,7 +112,7 @@ export class ServicoRecuperacaoSenha {
       const restante = 1800 - (Date.now() - inicio);
       if (restante > 0) await new Promise((resolver) => setTimeout(resolver, restante));
     }
-    return mensagemGenerica;
+    return {mensagem:mensagemGenerica,aguardeSegundos};
   }
 
   async verificar(token: string): Promise<boolean> {

@@ -15,6 +15,8 @@ export default function RecuperarSenha() {
   const [enviando, setEnviando] = useState(false);
   const [mensagem, setMensagem] = useState("");
   const [erro, setErro] = useState("");
+  const [bloqueadoAte,setBloqueadoAte]=useState(0);
+  const [segundosRestantes,setSegundosRestantes]=useState(0);
   useEffect(() => {
     const valor = new URLSearchParams(location.search).get("token");
     if (!valor) return;
@@ -24,8 +26,20 @@ export default function RecuperarSenha() {
       .then(r=>r.json()).then(d=>setEstado(d.valido?"redefinir":"invalido"))
       .catch(()=>setEstado("invalido"));
   },[]);
+  useEffect(()=>{
+    if (!bloqueadoAte) return;
+    const atualizar=()=>{
+      const restante=Math.max(0,Math.ceil((bloqueadoAte-Date.now())/1000));
+      setSegundosRestantes(restante);
+      if (!restante) setBloqueadoAte(0);
+    };
+    const temporizador=window.setInterval(atualizar,1000);
+    return ()=>window.clearInterval(temporizador);
+  },[bloqueadoAte]);
   async function enviar(evento: FormEvent) {
-    evento.preventDefault(); setErro(""); setMensagem(""); setEnviando(true);
+    evento.preventDefault();
+    if (segundosRestantes>0) return;
+    setErro(""); setMensagem(""); setEnviando(true);
     try {
       if (estado==="redefinir") {
         if (senha!==confirmarSenha) { setErro("As senhas não coincidem."); return; }
@@ -36,7 +50,15 @@ export default function RecuperarSenha() {
         method:"POST",headers:{"Content-Type":"application/json"},credentials:"same-origin",
         body:JSON.stringify(estado==="redefinir"?{token,senha,confirmarSenha}:{email})});
       const dados=await resposta.json();
-      if (!resposta.ok) {setErro(dados.erro||"Não foi possível concluir a solicitação.");if(resposta.status===410)setEstado("invalido");return;}
+      if (!resposta.ok) {
+        if(resposta.status===429 && Number(dados.aguardeSegundos)>0) {
+          const segundos=Number(dados.aguardeSegundos);
+          setSegundosRestantes(segundos);setBloqueadoAte(Date.now()+segundos*1000);
+        }
+        setErro(dados.erro||"Não foi possível concluir a solicitação.");
+        if(resposta.status===410)setEstado("invalido");
+        return;
+      }
       if (estado==="redefinir") {location.replace("/admin?senha=alterada");return;}
       setMensagem(dados.mensagem);
     } catch {setErro("Não foi possível conectar ao servidor. Tente novamente mais tarde.");}
@@ -49,7 +71,8 @@ export default function RecuperarSenha() {
     {(estado==="solicitar"||estado==="invalido")&&<label>E-mail cadastrado<div className="campo-senha"><Mail aria-hidden="true"/><input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Digite o e-mail" autoComplete="email" required maxLength={254}/></div></label>}
     {estado==="redefinir"&&<><label>Nova senha<div className="campo-senha"><input type={mostrar?"text":"password"} value={senha} onChange={e=>setSenha(e.target.value)} autoComplete="new-password" required minLength={8} maxLength={128}/><button type="button" onClick={()=>setMostrar(!mostrar)} aria-label={mostrar?"Ocultar senha":"Mostrar senha"}>{mostrar?<EyeOff/>:<Eye/>}</button></div></label><label>Confirme a nova senha<input type={mostrar?"text":"password"} value={confirmarSenha} onChange={e=>setConfirmarSenha(e.target.value)} autoComplete="new-password" required/></label><p>Use ao menos 8 caracteres, incluindo letra maiúscula, minúscula, número e caractere especial, sem espaços.</p></>}
     {mensagem&&<div className="sucesso-seguranca" role="status">{mensagem}</div>}{erro&&<div className="erro-api" role="alert">{erro}</div>}
-    {estado!=="validando"&&<button className="salvar2" disabled={enviando}><LockKeyhole/>{enviando?" Aguarde…":estado==="redefinir"?" Confirmar nova senha":" Enviar link de recuperação"}</button>}
+    {segundosRestantes>0&&estado!=="redefinir"&&<p className="bloqueio-login" role="status">Nova solicitação disponível em <strong>{Math.floor(segundosRestantes/60)}:{String(segundosRestantes%60).padStart(2,"0")}</strong>. O limite é controlado pelo servidor.</p>}
+    {estado!=="validando"&&<button className="salvar2" disabled={enviando||segundosRestantes>0}><LockKeyhole/>{enviando?" Aguarde…":segundosRestantes>0?" Aguarde para solicitar novamente":estado==="redefinir"?" Confirmar nova senha":" Enviar link de recuperação"}</button>}
     <Link className="link-voltar" href="/admin">← Voltar ao login</Link>
   </form></main>;
 }

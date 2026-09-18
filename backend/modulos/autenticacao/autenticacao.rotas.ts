@@ -24,8 +24,13 @@ rotasAutenticacao.post("/recuperar-senha", async (req,res) => {
   const validacao=esquemaEmail.safeParse(req.body);
   // Mesmo para entradas inválidas, evita sinalizar a existência de uma conta.
   const email=validacao.success ? validacao.data.email.trim().toLowerCase() : "entrada-invalida";
-  const mensagem=await recuperacao.solicitar(email,req.ip || "local");
-  res.json({mensagem});
+  const resultado=await recuperacao.solicitar(email,req.ip || "local");
+  if (resultado.aguardeSegundos>0) {
+    res.setHeader("Retry-After",String(resultado.aguardeSegundos));
+    res.status(429).json({erro:"Aguarde antes de solicitar outro link de recuperação.",aguardeSegundos:resultado.aguardeSegundos});
+    return;
+  }
+  res.json({mensagem:resultado.mensagem});
 });
 rotasAutenticacao.get("/recuperar-senha/validar",async (req,res) => {
   res.setHeader("Cache-Control","no-store");
