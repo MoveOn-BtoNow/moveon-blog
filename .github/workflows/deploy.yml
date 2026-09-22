@@ -25,30 +25,77 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Preparar chave SSH
+        env:
+          CHAVE_PRIVADA: ${{ secrets.SSH_PRIVATE_KEY }}
+          CHAVES_CONHECIDAS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          ENDERECO: ${{ secrets.SERVER_IP }}
         run: |
           install -d -m 700 ~/.ssh
-          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_deploy
+          test -n "$CHAVE_PRIVADA" || { echo "O secret SSH_PRIVATE_KEY esta vazio ou nao existe." >&2; exit 1; }
+
+          # Remove CR do Windows e garante a quebra de linha final, exigida pelo OpenSSH.
+          printf '%s' "$CHAVE_PRIVADA" | tr -d '\r' > ~/.ssh/id_deploy
+          [ -n "$(tail -c1 ~/.ssh/id_deploy)" ] && printf '\n' >> ~/.ssh/id_deploy
           chmod 600 ~/.ssh/id_deploy
-          # Com o secret SSH_KNOWN_HOSTS a chave do host fica fixada; sem ele ela é lida na hora.
-          if [[ -n "${{ secrets.SSH_KNOWN_HOSTS }}" ]]; then
-            printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+          # Diagnostico do formato: nada aqui revela o conteudo da chave.
+          echo "Linhas na chave: $(wc -l < ~/.ssh/id_deploy)"
+          if grep -q 'PuTTY-User-Key-File' ~/.ssh/id_deploy; then
+            echo "A chave esta no formato PuTTY (.ppk), que o OpenSSH nao le." >&2
+            echo "Converta com: puttygen chave.ppk -O private-openssh -o chave.pem" >&2
+            exit 1
+          elif grep -q 'BEGIN OPENSSH PRIVATE KEY' ~/.ssh/id_deploy; then
+            echo "Formato detectado: OpenSSH."
+          elif grep -qE 'BEGIN (RSA|EC|DSA) PRIVATE KEY' ~/.ssh/id_deploy; then
+            echo "Formato detectado: PEM."
+          elif grep -q 'BEGIN PRIVATE KEY' ~/.ssh/id_deploy; then
+            echo "Formato detectado: PKCS#8."
           else
-            ssh-keyscan -p "$PORTA_SSH" -H "${{ secrets.SERVER_IP }}" > ~/.ssh/known_hosts 2>/dev/null
+            echo "Nenhum cabecalho de chave privada foi encontrado no secret." >&2
+            echo "Copie o arquivo inteiro, incluindo as linhas BEGIN e END." >&2
+            exit 1
           fi
-          test -s ~/.ssh/known_hosts || { echo "Nao foi possivel obter a chave de host de ${{ secrets.SERVER_IP }}:$PORTA_SSH" >&2; exit 1; }
+
+          # Falha aqui com mensagem clara em vez de cair para autenticacao por senha.
+          if ! ssh-keygen -y -f ~/.ssh/id_deploy > /dev/null 2>&1; then
+            echo "O OpenSSH nao conseguiu ler a chave privada." >&2
+            echo "Causas comuns: a chave tem passphrase, foi colada em uma unica linha," >&2
+            echo "esta truncada, ou o secret guarda a chave publica em vez da privada." >&2
+            exit 1
+          fi
+          echo "Chave privada validada."
+
+          if [[ -n "$CHAVES_CONHECIDAS" ]]; then
+            printf '%s\n' "$CHAVES_CONHECIDAS" | tr -d '\r' > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -p "$PORTA_SSH" -H "$ENDERECO" > ~/.ssh/known_hosts 2>/dev/null
+          fi
+          test -s ~/.ssh/known_hosts || { echo "Nao foi possivel obter a chave de host de $ENDERECO:$PORTA_SSH" >&2; exit 1; }
           chmod 600 ~/.ssh/known_hosts
+
           cat > ~/.ssh/config <<CONF
           Host vps
-            HostName ${{ secrets.SERVER_IP }}
+            HostName $ENDERECO
             User $SSH_USER
             Port $PORTA_SSH
             IdentityFile ~/.ssh/id_deploy
             IdentitiesOnly yes
             StrictHostKeyChecking yes
+            PasswordAuthentication no
+            KbdInteractiveAuthentication no
+            BatchMode yes
             ServerAliveInterval 30
             ServerAliveCountMax 20
           CONF
           chmod 600 ~/.ssh/config
+
+      - name: Validar acesso ao servidor
+        run: |
+          if ! ssh -T vps 'echo "Conectado como $(id -un) em $(hostname)"'; then
+            echo "A chave e valida, mas o servidor recusou a autenticacao." >&2
+            echo "Confirme que a chave publica correspondente esta em ~/.ssh/authorized_keys do usuario $SSH_USER." >&2
+            exit 1
+          fi
 
       - name: Garantir rsync e diretório no servidor
         run: |
@@ -98,7 +145,8 @@ jobs:
       - name: Conferir estado do serviço
         if: always()
         run: |
-          ssh -T vps 'bash -s' <<'REMOTO'
+          test -f ~/.ssh/id_deploy || exit 0
+          ssh -T vps 'bash -s' <<'REMOTO' || true
           systemctl is-enabled moveon.service || true
           systemctl is-active moveon.service || true
           curl -fsS --max-time 10 http://127.0.0.1:3001/api/saude >/dev/null && echo "API saudavel" || echo "API sem resposta"
