@@ -1,8 +1,38 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+type VisibilidadeMenu = {
+  exibirQuemSomos: boolean;
+  exibirOQueResolvemos: boolean;
+  exibirContato: boolean;
+};
+
 export default function RodapePortal({
   logo = "/logo.png",
 }: {
   logo?: string;
 }) {
+  const [visibilidade, setVisibilidade] = useState<VisibilidadeMenu | null>(null);
+
+  useEffect(() => {
+    const controlador = new AbortController();
+    fetch("/api/portal/inicial", { signal: controlador.signal })
+      .then((resposta) => {
+        if (!resposta.ok) throw new Error("Não foi possível carregar o menu.");
+        return resposta.json();
+      })
+      .then((resultado: { configuracoes?: VisibilidadeMenu }) => {
+        if (resultado.configuracoes) setVisibilidade(resultado.configuracoes);
+      })
+      .catch((erro: unknown) => {
+        if (!(erro instanceof DOMException && erro.name === "AbortError")) {
+          setVisibilidade(null);
+        }
+      });
+    return () => controlador.abort();
+  }, []);
+
   return (
     <footer className="rodape-portal">
       <div className="rodape-identidade">
@@ -12,9 +42,9 @@ export default function RodapePortal({
         <strong>Menu</strong>
         <a href="/">Início</a>
         <a href="/#publicacoes">Publicações</a>
-        <a href="/sobre">Quem Somos</a>
-        <a href="/solucoes">O que resolvemos</a>
-        <a href="/contato">Contato</a>
+        {visibilidade?.exibirQuemSomos === true && <a href="/sobre">Quem Somos</a>}
+        {visibilidade?.exibirOQueResolvemos === true && <a href="/solucoes">O que resolvemos</a>}
+        {visibilidade?.exibirContato === true && <a href="/contato">Contato</a>}
       </nav>
       <div className="rodape-dados">
         <div>
