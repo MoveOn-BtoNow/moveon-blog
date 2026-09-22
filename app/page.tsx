@@ -887,6 +887,11 @@ function Portal({ aoAdministrar }: { aoAdministrar: () => void }) {
           )}
         </nav>
         <div className="acoes">
+          {dados.configuracoes.exibirContato && (
+            <button className="cabecalho-cta" onClick={() => (location.href = "/contato")}>
+              Fale com um especialista
+            </button>
+          )}
           <button
             className="icon-btn acesso-admin"
             aria-label="Abrir administração"
@@ -1086,7 +1091,6 @@ function Portal({ aoAdministrar }: { aoAdministrar: () => void }) {
             <span className="eyebrow">CONTEÚDO ATUALIZADO</span>
             <h2>Publicações recentes</h2>
           </div>
-          <p>{dados.configuracoes.descricao}</p>
         </div>
         {termo.trim() && (
           <div className="busca-ativa" role="status" aria-live="polite">
@@ -1181,10 +1185,7 @@ function Portal({ aoAdministrar }: { aoAdministrar: () => void }) {
       {dados.configuracoes.exibirNewsletter && (
         <InscricaoNewsletter nome={dados.configuracoes.nome} />
       )}
-      <RodapePortal
-        logo={dados.configuracoes.caminhoLogo || "/logo.png"}
-        descricao={dados.configuracoes.descricao}
-      />
+      <RodapePortal logo={dados.configuracoes.caminhoLogo || "/logo.png"} />
       <RedesSociaisFlutuantes
         configuracao={{
           exibirRedesSociais: dados.configuracoes.exibirRedesSociais,

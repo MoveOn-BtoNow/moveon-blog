@@ -88,6 +88,9 @@ export default function PaginaSobre() {
           {identidade?.exibirContato === true && <Link href="/contato">Contato</Link>}
         </nav>
         <div className="acoes">
+          {identidade?.exibirContato === true && (
+            <Link className="cabecalho-cta" href="/contato">Fale com um especialista</Link>
+          )}
           <Link
             className="icon-btn acesso-admin"
             href="/admin"
@@ -182,7 +185,7 @@ export default function PaginaSobre() {
           }}
         />
       )}
-      <RodapePortal logo={identidade?.caminhoLogo || "/logo.png"} descricao={identidade?.descricao || "Conteúdo que move"} />
+      <RodapePortal logo={identidade?.caminhoLogo || "/logo.png"} />
     </div>
   );
 }

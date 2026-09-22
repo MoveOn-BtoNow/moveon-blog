@@ -74,6 +74,9 @@ export default function CabecalhoPortal() {
         {identidade?.exibirContato === true && <Link href="/contato">Contato</Link>}
       </nav>
       <div className="acoes">
+        {identidade?.exibirContato === true && (
+          <Link className="cabecalho-cta" href="/contato">Fale com um especialista</Link>
+        )}
         <Link className="icon-btn acesso-admin" href="/admin" aria-label="Abrir administração" title="Administração"><Settings /></Link>
         <Link className="icon-btn" href="/?buscar=1" aria-label="Buscar publicações" title="Buscar"><Search /></Link>
         <button className="theme" aria-label="Alternar tema" onClick={alternarTema}>{escuro ? <Sun /> : <Moon />}</button>

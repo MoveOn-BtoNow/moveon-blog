@@ -1,25 +1,21 @@
 export default function RodapePortal({
   logo = "/logo.png",
-  descricao = "Conteúdo que move",
 }: {
   logo?: string;
-  descricao?: string;
 }) {
   return (
     <footer className="rodape-portal">
       <div className="rodape-identidade">
         <img src={logo || "/logo.png"} alt="MOVE.ON" />
-        <p>{descricao}</p>
       </div>
-      <section className="rodape-parceiros-tecnologia" aria-label="Parceiros oficiais de tecnologia">
-        <p>Parceiro oficial dos principais players de tecnologia do mundo.</p>
-        <div>
-          <img src="/SAP.png" alt="SAP" loading="lazy" />
-          <img src="/AWS.png" alt="AWS" loading="lazy" />
-          <img src="/Google_Cloud_vertical.png" alt="Google Cloud" loading="lazy" />
-          <img src="/ASUG-Brasil.png" alt="ASUG Brasil" loading="lazy" />
-        </div>
-      </section>
+      <nav className="rodape-menu" aria-label="Menu institucional">
+        <strong>Menu</strong>
+        <a href="/">Início</a>
+        <a href="/#publicacoes">Publicações</a>
+        <a href="/sobre">Quem Somos</a>
+        <a href="/solucoes">O que resolvemos</a>
+        <a href="/contato">Contato</a>
+      </nav>
       <div className="rodape-dados">
         <div>
           <strong>CNPJ</strong>
@@ -35,6 +31,10 @@ export default function RodapePortal({
           <a href="/termos">Termos de Uso</a>
           <a href="/politica-de-privacidade">Política de Privacidade</a>
         </nav>
+      </div>
+      <div className="rodape-base">
+        <span>© {new Date().getFullYear()} MOVE.ON. Todos os direitos reservados.</span>
+        <span>CNPJ 43.247.308/0001-49</span>
       </div>
     </footer>
   );

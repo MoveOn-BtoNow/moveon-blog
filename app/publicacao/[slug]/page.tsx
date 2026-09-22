@@ -203,10 +203,7 @@ export default async function PaginaPublicacao({
       {p.configuracoes.exibirNewsletter && (
         <InscricaoNewsletter nome={p.configuracoes.nome || "MOVE.ON"} />
       )}
-      <RodapePortal
-        logo={p.configuracoes.caminhoLogo || "/logo.png"}
-        descricao={p.configuracoes.descricao}
-      />
+      <RodapePortal logo={p.configuracoes.caminhoLogo || "/logo.png"} />
     </div>
   );
 }
