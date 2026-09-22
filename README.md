@@ -11,15 +11,15 @@ chmod +x scripts/instalar.sh
 ./scripts/instalar.sh https://blog.seudominio.com.br
 ```
 
-Sem argumento, o instalador pergunta o domínio e sugere o valor já salvo em `.env`. O segundo argumento, opcional, define o e-mail do certificado: `./scripts/instalar.sh https://blog.exemplo.com.br infraestrutura@exemplo.com.br`.
+Sem argumento, o instalador pergunta o domínio e sugere o valor já salvo em `.env`.
 
-O instalador configura Docker, Node.js 22, dependências bloqueadas pelo `package-lock.json`, `.env`, senhas aleatórias, PostgreSQL, Redis, migrations, seeders, testes, build, NGINX e certificado Let's Encrypt. Ele é idempotente: preserva o `.env` e seus segredos, cria backup antes de ajustes, reaplica somente migrations pendentes, evita reinstalar dependências inalteradas e repara serviços e configurações gerenciadas pelo projeto.
+O instalador configura Docker, Node.js 22, dependências bloqueadas pelo `package-lock.json`, `.env`, senhas aleatórias, PostgreSQL, Redis, migrations, seeders, testes, build, Caddy e HTTPS automático. Ele é idempotente: preserva o `.env` e seus segredos, cria backup antes de ajustes, reaplica somente migrations pendentes, evita reinstalar dependências inalteradas e repara serviços e configurações gerenciadas pelo projeto.
 
-O instalador detecta automaticamente o proxy que controla 80/443. Em VPS livre ou com NGINX, cria um virtual host NGINX isolado, configura `127.0.0.1:3000`, certificado Let's Encrypt e renovação. Se Caddy estiver ativo, acrescenta somente um bloco MOVE.ON delimitado ao Caddyfile existente e utiliza o TLS automático do Caddy. Configurações e domínios de outras aplicações não são lidos nem reescritos. Estados mistos ou proxies desconhecidos são recusados para evitar interferência.
+O Caddy é o único proxy configurado pelo instalador. Em uma VPS com as portas 80/443 livres, ele é instalado e habilitado automaticamente. Se o Caddy já estiver ativo, o instalador acrescenta somente um bloco MOVE.ON delimitado ao Caddyfile existente e preserva os demais domínios. Se outro serviço ocupar 80/443, a instalação é interrompida sem parar nem alterar esse serviço.
 
-Em ambos os proxies, `/api` e `/uploads` são encaminhados para o backend em `127.0.0.1:3001`; as demais rotas seguem para o portal em `127.0.0.1:3000`. A instalação só conclui depois de validar portal e API através do HTTPS do próprio domínio.
+No Caddy, `/api` e `/uploads` são encaminhados para o backend em `127.0.0.1:3001`; as demais rotas seguem para o portal em `127.0.0.1:3000`. A instalação só conclui depois de validar portal e API através do HTTPS do próprio domínio.
 
-PostgreSQL e Redis utilizam `restart: unless-stopped`. Portal e API são instalados como `moveon.service`, habilitado no boot e configurado com `Restart=always`. O NGINX e o timer de renovação do certificado também são habilitados. Assim, a plataforma volta a operar após reinicialização ou falha inesperada.
+PostgreSQL e Redis utilizam `restart: unless-stopped`. Portal e API são instalados como `moveon.service`, habilitado no boot e configurado com `Restart=always`. O Caddy também é habilitado no boot e gerencia automaticamente a emissão e a renovação do certificado. Assim, a plataforma volta a operar após reinicialização ou falha inesperada.
 
 Gerenciamento e logs do serviço:
 

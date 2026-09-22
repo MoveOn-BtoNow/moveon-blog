@@ -30,21 +30,19 @@ URL_PLATAFORMA="${URL_PLATAFORMA%/}"
 DOMINIO="${URL_PLATAFORMA#*://}"; DOMINIO="${DOMINIO%%:*}"
 HTTPS=false; [[ "$URL_PLATAFORMA" == https://* ]] && HTTPS=true
 AMBIENTE_LOCAL=false; [[ "$DOMINIO" == "localhost" || "$DOMINIO" == "127.0.0.1" ]] && AMBIENTE_LOCAL=true
-EMAIL_CERTIFICADO="${2:-contato@$DOMINIO}"
-TIPO_PROXY="nginx"
+TIPO_PROXY="local"
 if ! $AMBIENTE_LOCAL; then
   PORTAS_PUBLICAS="$($SUDO ss -ltnp '( sport = :80 or sport = :443 )' 2>/dev/null || true)"
   PROCESSOS_PROXY="$(printf '%s\n' "$PORTAS_PUBLICAS" | sed '1d' | sed '/^[[:space:]]*$/d')"
-  if [[ -z "$PROCESSOS_PROXY" ]]; then TIPO_PROXY="nginx"
+  if [[ -z "$PROCESSOS_PROXY" ]]; then TIPO_PROXY="caddy"
   elif printf '%s\n' "$PROCESSOS_PROXY" | grep -q 'caddy' && ! printf '%s\n' "$PROCESSOS_PROXY" | grep -vq 'caddy'; then TIPO_PROXY="caddy"
-  elif printf '%s\n' "$PROCESSOS_PROXY" | grep -q 'nginx' && ! printf '%s\n' "$PROCESSOS_PROXY" | grep -vq 'nginx'; then TIPO_PROXY="nginx"
   else TIPO_PROXY="externo"; fi
   echo "Proxy detectado: $TIPO_PROXY"
 fi
 
 echo "[1/9] Verificando sistema e dependências..."
 $SUDO apt-get update
-$SUDO apt-get install -y ca-certificates curl gnupg openssl dnsutils
+$SUDO apt-get install -y ca-certificates curl gnupg openssl dnsutils debian-keyring debian-archive-keyring apt-transport-https
 if ! command -v docker >/dev/null; then curl -fsSL https://get.docker.com | $SUDO sh; fi
 if ! docker compose version >/dev/null 2>&1; then $SUDO apt-get install -y docker-compose-plugin; fi
 $SUDO systemctl enable --now docker
@@ -155,14 +153,23 @@ done
 
 echo "[8/9] Configurando proxy reverso e HTTPS..."
 PROXY_GERENCIADO=false
-if ! $AMBIENTE_LOCAL && [[ "$TIPO_PROXY" == "nginx" ]]; then
-  "$RAIZ/scripts/configurar-nginx.sh" "$DOMINIO" "$EMAIL_CERTIFICADO"
-  PROXY_GERENCIADO=true
-elif ! $AMBIENTE_LOCAL && [[ "$TIPO_PROXY" == "caddy" ]]; then
+if ! $AMBIENTE_LOCAL && [[ "$TIPO_PROXY" == "caddy" ]]; then
+  if ! command -v caddy >/dev/null 2>&1; then
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/gpg.key' \
+      | $SUDO gpg --dearmor --yes -o /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+    curl -1sLf 'https://dl.cloudsmith.io/public/caddy/stable/debian.deb.txt' \
+      | $SUDO tee /etc/apt/sources.list.d/caddy-stable.list >/dev/null
+    $SUDO chmod o+r /usr/share/keyrings/caddy-stable-archive-keyring.gpg
+    $SUDO chmod o+r /etc/apt/sources.list.d/caddy-stable.list
+    $SUDO apt-get update
+    $SUDO apt-get install -y caddy
+  fi
+  $SUDO systemctl enable --now caddy
   "$RAIZ/scripts/configurar-caddy.sh" "$DOMINIO"
   PROXY_GERENCIADO=true
 elif [[ "$TIPO_PROXY" == "externo" ]]; then
-  echo "Portas 80/443 em estado ambíguo. Nenhum proxy foi alterado." >&2
+  echo "As portas 80/443 estão ocupadas por um serviço diferente do Caddy." >&2
+  echo "Nenhum serviço existente foi interrompido. Libere as portas ou integre o domínio manualmente ao proxy atual." >&2
   exit 1
 fi
 
@@ -170,7 +177,6 @@ echo "[9/9] Auditoria final..."
 $SUDO systemctl is-enabled --quiet moveon.service; $SUDO systemctl is-active --quiet moveon.service
 $SUDO docker compose ps --status running | grep -q banco
 $SUDO docker compose ps --status running | grep -q redis
-if $PROXY_GERENCIADO && [[ "$TIPO_PROXY" == "nginx" ]]; then $SUDO nginx -t; fi
 # Valida o origin diretamente; o Cloudflare pode responder com desafio 403
 # para clientes de terminal mesmo quando o portal está saudável.
 if $PROXY_GERENCIADO && $HTTPS; then
