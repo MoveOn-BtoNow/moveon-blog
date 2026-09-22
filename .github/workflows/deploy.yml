@@ -1,0 +1,111 @@
+name: Deploy VPS
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-vps
+  cancel-in-progress: false
+
+env:
+  SSH_USER: root
+  CAMINHO_DESTINO: /opt/moveon-blog
+  PORTA_SSH: ${{ vars.PORTA_SSH || '22' }}
+
+jobs:
+  deploy:
+    name: Sincronizar e executar instalador
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Obter o código
+        uses: actions/checkout@v4
+
+      - name: Preparar chave SSH
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          # Com o secret SSH_KNOWN_HOSTS a chave do host fica fixada; sem ele ela é lida na hora.
+          if [[ -n "${{ secrets.SSH_KNOWN_HOSTS }}" ]]; then
+            printf '%s\n' "${{ secrets.SSH_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+          else
+            ssh-keyscan -p "$PORTA_SSH" -H "${{ secrets.SERVER_IP }}" > ~/.ssh/known_hosts 2>/dev/null
+          fi
+          test -s ~/.ssh/known_hosts || { echo "Nao foi possivel obter a chave de host de ${{ secrets.SERVER_IP }}:$PORTA_SSH" >&2; exit 1; }
+          chmod 600 ~/.ssh/known_hosts
+          cat > ~/.ssh/config <<CONF
+          Host vps
+            HostName ${{ secrets.SERVER_IP }}
+            User $SSH_USER
+            Port $PORTA_SSH
+            IdentityFile ~/.ssh/id_deploy
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ServerAliveInterval 30
+            ServerAliveCountMax 20
+          CONF
+          chmod 600 ~/.ssh/config
+
+      - name: Garantir rsync e diretório no servidor
+        run: |
+          ssh -T vps "CAMINHO='$CAMINHO_DESTINO' bash -s" <<'REMOTO'
+          set -Eeuo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          command -v rsync >/dev/null || { apt-get update && apt-get install -y rsync; }
+          mkdir -p "$CAMINHO"
+          REMOTO
+
+      - name: Enviar código para a VPS
+        run: |
+          rsync -az --delete --human-readable \
+            --exclude '.git' \
+            --exclude '.github' \
+            --exclude 'node_modules' \
+            --exclude '.env' \
+            --exclude '.env.backup.*' \
+            --exclude 'CREDENCIAIS-INICIAIS.txt' \
+            --exclude '.estado-instalacao' \
+            --exclude 'uploads' \
+            --exclude 'logs' \
+            --exclude 'dist' \
+            --exclude '.vinext' \
+            --exclude '.next' \
+            --exclude '.wrangler' \
+            --exclude 'moveon.pid' \
+            --exclude '*.tsbuildinfo' \
+            ./ "vps:$CAMINHO_DESTINO/"
+
+      - name: Executar o instalador
+        env:
+          URL_PORTAL: ${{ vars.URL_PUBLICA_PORTAL }}
+          EMAIL_CERTIFICADO: ${{ vars.EMAIL_CERTIFICADO }}
+        run: |
+          ssh -T vps "CAMINHO='$CAMINHO_DESTINO' URL='$URL_PORTAL' EMAIL='$EMAIL_CERTIFICADO' bash -s" <<'REMOTO'
+          set -Eeuo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          cd "$CAMINHO"
+          chmod +x scripts/*.sh
+          # Sem argumento e sem TTY o instalador reaproveita URL_PUBLICA_PORTAL do .env ja existente.
+          if [[ -n "$URL" && -n "$EMAIL" ]]; then ./scripts/instalar.sh "$URL" "$EMAIL" < /dev/null
+          elif [[ -n "$URL" ]]; then ./scripts/instalar.sh "$URL" < /dev/null
+          else ./scripts/instalar.sh < /dev/null; fi
+          REMOTO
+
+      - name: Conferir estado do serviço
+        if: always()
+        run: |
+          ssh -T vps 'bash -s' <<'REMOTO'
+          systemctl is-enabled moveon.service || true
+          systemctl is-active moveon.service || true
+          curl -fsS --max-time 10 http://127.0.0.1:3001/api/saude >/dev/null && echo "API saudavel" || echo "API sem resposta"
+          curl -fsS --max-time 10 http://127.0.0.1:3000 >/dev/null && echo "Portal saudavel" || echo "Portal sem resposta"
+          journalctl -u moveon.service -n 40 --no-pager || true
+          REMOTO
+
+      - name: Limpar credenciais do runner
+        if: always()
+        run: rm -rf ~/.ssh
