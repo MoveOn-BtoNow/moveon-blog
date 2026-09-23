@@ -16,6 +16,7 @@ const pastaCapas = path.join(raizUploads, "capas");
 const pastaSociais = path.join(raizUploads, "sociais");
 const pastaPerfis = path.join(raizUploads, "perfis");
 const pastaConteudos = path.join(raizUploads, "conteudos");
+const pastaIconesRedes = path.join(raizUploads, "redes");
 const formatos = new Map([
   ["image/jpeg", "jpg"],
   ["image/png", "png"],
@@ -191,6 +192,33 @@ export async function armazenarLogo(arquivo?: Express.Multer.File) {
   return `/uploads/conteudos/${nome}`;
 }
 
+export async function armazenarIconeRedeSocial(arquivo?: Express.Multer.File) {
+  if (!arquivo) throw new Error("Selecione o ícone da rede social.");
+  const tipo = await fileTypeFromBuffer(arquivo.buffer);
+  if (!tipo || !formatos.has(tipo.mime))
+    throw new Error("Formato inválido. Envie JPEG, PNG, WebP ou AVIF.");
+  const nome = `${randomUUID()}.webp`;
+  const icone = criarProcessadorImagem(arquivo.buffer, {
+    failOn: "error",
+    limitInputPixels: 64_000_000,
+    sequentialRead: true,
+  })
+    .rotate()
+    .resize({
+      width: 128,
+      height: 128,
+      fit: "inside",
+      withoutEnlargement: true,
+      fastShrinkOnLoad: true,
+    })
+    .webp({ quality: 82 });
+  if (await usarS3())
+    return enviarObjeto(`redes/${nome}`, await icone.toBuffer(), "image/webp");
+  await mkdir(pastaIconesRedes, { recursive: true });
+  await icone.toFile(path.join(pastaIconesRedes, nome));
+  return `/uploads/redes/${nome}`;
+}
+
 export async function fotoPerfilExiste(caminho?: string | null) {
   if (await objetoExiste(caminho)) return true;
   if (!caminho?.startsWith("/uploads/perfis/")) return false;
@@ -225,13 +253,14 @@ export async function excluirCapaGerenciada(caminho?: string | null) {
 export async function excluirMidiaGerenciada(caminho?: string | null) {
   if (!caminho) return;
   if (await excluirObjeto(caminho)) return;
-  if (!/^\/uploads\/(capas|sociais|conteudos)\/[a-f0-9-]+\.(jpg|webp)$/i.test(caminho))
+  if (!/^\/uploads\/(capas|sociais|conteudos|redes)\/[a-f0-9-]+\.(jpg|webp)$/i.test(caminho))
     return;
   const segmento = caminho.split("/")[2];
   const pastas: Record<string, string> = {
     capas: pastaCapas,
     sociais: pastaSociais,
     conteudos: pastaConteudos,
+    redes: pastaIconesRedes,
   };
   const pasta = pastas[segmento];
   if (!pasta) return;

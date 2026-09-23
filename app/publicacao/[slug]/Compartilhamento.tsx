@@ -31,8 +31,12 @@ export default function Compartilhamento({
   titulo: string;
   configuracaoRedes: {
     exibirRedesSociais: boolean;
-    instagramUrl: string;
-    linkedinUrl: string;
+    redesSociais: {
+      id: string;
+      nome: string;
+      enderecoUrl: string;
+      caminhoIcone?: string | null;
+    }[];
   };
 }) {
   const [mostrarTopo, setMostrarTopo] = useState(false);

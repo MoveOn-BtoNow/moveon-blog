@@ -29,8 +29,12 @@ type Publicacao = {
     exibirOQueResolvemos: boolean;
     exibirNewsletter: boolean;
     exibirRedesSociais: boolean;
-    instagramUrl: string;
-    linkedinUrl: string;
+    redesSociais: {
+      id: string;
+      nome: string;
+      enderecoUrl: string;
+      caminhoIcone?: string | null;
+    }[];
     atualizadoEm: string;
   };
 };
@@ -158,8 +162,7 @@ export default async function PaginaPublicacao({
           titulo={p.titulo}
           configuracaoRedes={{
             exibirRedesSociais: p.configuracoes.exibirRedesSociais,
-            instagramUrl: p.configuracoes.instagramUrl,
-            linkedinUrl: p.configuracoes.linkedinUrl,
+            redesSociais: p.configuracoes.redesSociais,
           }}
         />
         <header>

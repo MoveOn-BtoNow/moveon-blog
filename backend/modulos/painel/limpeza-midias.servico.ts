@@ -9,8 +9,8 @@ import {
 import { obterRaizUploads } from "./armazenamento-capas";
 import { RepositorioPainel } from "./painel.repositorio";
 
-const padraoChave = /(?:^|\/)(capas|sociais|conteudos|videos|perfis)\/([a-f0-9-]+\.(?:webp|jpg|mp4|webm|mov))/gi;
-const pastas = ["capas", "sociais", "conteudos", "videos", "perfis"] as const;
+const padraoChave = /(?:^|\/)(capas|sociais|conteudos|videos|perfis|redes)\/([a-f0-9-]+\.(?:webp|jpg|mp4|webm|mov))/gi;
+const pastas = ["capas", "sociais", "conteudos", "videos", "perfis", "redes"] as const;
 
 function chavesReferenciadas(valores: string[]) {
   const chaves = new Set<string>();
@@ -34,7 +34,7 @@ export async function limparMidiasOrfas() {
       if (
         objeto.alteradoEm.getTime() < limite &&
         !referencias.has(objeto.chave.toLowerCase()) &&
-        /^(capas|sociais|conteudos|videos|perfis)\/[a-f0-9-]+\.(webp|jpg|mp4|webm|mov)$/i.test(objeto.chave)
+        /^(capas|sociais|conteudos|videos|perfis|redes)\/[a-f0-9-]+\.(webp|jpg|mp4|webm|mov)$/i.test(objeto.chave)
       ) {
         await excluirObjetoPorChave(objeto.chave);
         removidas++;

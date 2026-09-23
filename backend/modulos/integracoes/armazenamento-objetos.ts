@@ -102,7 +102,7 @@ export async function listarObjetosGerenciados() {
   const c = await configuracao();
   if (c.armazenamentoModo !== "s3") return [];
   const objetos: Array<{ chave: string; alteradoEm: Date }> = [];
-  for (const prefixo of ["capas/", "sociais/", "conteudos/", "videos/", "perfis/"]) {
+  for (const prefixo of ["capas/", "sociais/", "conteudos/", "videos/", "perfis/", "redes/"]) {
     let continuacao: string | undefined;
     do {
       const pagina = await cliente(c).send(new ListObjectsV2Command({
@@ -128,7 +128,7 @@ export async function entregarObjeto(requisicao: Request, resposta: Response) {
   const pasta = String(requisicao.params.pasta || "");
   const arquivo = String(requisicao.params.arquivo || "");
   if (
-    !["capas", "sociais", "conteudos", "videos", "perfis"].includes(pasta) ||
+    !["capas", "sociais", "conteudos", "videos", "perfis", "redes"].includes(pasta) ||
     !/^[a-f0-9-]+\.(?:webp|jpg|mp4|webm|mov)$/i.test(arquivo)
   )
     return void resposta.status(404).end();

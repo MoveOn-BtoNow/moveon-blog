@@ -9,7 +9,7 @@ export type DadosEventoPortal = {
 
 export class RepositorioPortal {
   async inicial() {
-    const [configuracoes, categorias, publicacoes, destaques, parceiros] = await Promise.all([
+    const [configuracoes, categorias, publicacoes, destaques, parceiros, redesSociais] = await Promise.all([
       conexao.query(
         'SELECT nome,descricao,caminho_logo "caminhoLogo",caminho_favicon "caminhoFavicon",cor_primaria "corPrimaria",cor_fundo_claro "corFundoClaro",cor_fundo_escuro "corFundoEscuro",cor_texto_claro "corTextoClaro",cor_texto_escuro "corTextoEscuro",exibir_carrossel_parceiros "exibirCarrosselParceiros",exibir_quem_somos "exibirQuemSomos",exibir_o_que_resolvemos "exibirOQueResolvemos",exibir_contato "exibirContato",exibir_newsletter "exibirNewsletter",exibir_redes_sociais "exibirRedesSociais",instagram_url "instagramUrl",linkedin_url "linkedinUrl" FROM configuracoes_portal WHERE id=1',
       ),
@@ -32,6 +32,7 @@ export class RepositorioPortal {
          ORDER BY p.atualizado_em DESC`,
       ),
       conexao.query('SELECT id,nome,caminho_logo "caminhoLogo",endereco_site "enderecoSite" FROM parceiros WHERE ativo ORDER BY ordem,nome'),
+      conexao.query('SELECT id,nome,endereco_url "enderecoUrl",caminho_icone "caminhoIcone" FROM redes_sociais WHERE ativa ORDER BY ordem,nome'),
     ]);
     return {
       configuracoes: configuracoes.rows[0],
@@ -40,6 +41,9 @@ export class RepositorioPortal {
       destaques: destaques.rows,
       parceiros: configuracoes.rows[0]?.exibirCarrosselParceiros
         ? parceiros.rows
+        : [],
+      redesSociais: configuracoes.rows[0]?.exibirRedesSociais
+        ? redesSociais.rows
         : [],
       proximoCursor: publicacoes.proximoCursor,
     };
@@ -107,7 +111,16 @@ export class RepositorioPortal {
        GROUP BY p.id,cp.id`,
       [slug],
     );
-    return r.rows[0] ?? null;
+    const publicacao = r.rows[0] ?? null;
+    if (publicacao?.configuracoes)
+      publicacao.configuracoes.redesSociais = [];
+    if (publicacao?.configuracoes?.exibirRedesSociais) {
+      const redes = await conexao.query(
+        'SELECT id,nome,endereco_url "enderecoUrl",caminho_icone "caminhoIcone" FROM redes_sociais WHERE ativa ORDER BY ordem,nome',
+      );
+      publicacao.configuracoes.redesSociais = redes.rows;
+    }
+    return publicacao;
   }
   async registrarEvento(
     dados: DadosEventoPortal,

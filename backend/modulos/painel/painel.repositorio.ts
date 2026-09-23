@@ -6,6 +6,7 @@ import type {
   DadosConfiguracao,
   DadosPublicacao,
   DadosParceiro,
+  DadosRedeSocial,
 } from "./painel.validacao";
 
 export function criarSlug(valor: string) {
@@ -23,6 +24,7 @@ export class RepositorioPainel {
         (SELECT count(*) FROM publicacoes WHERE imagem_capa_url=$1 OR imagem_social_url=$1 OR conteudo::text LIKE '%' || $1 || '%') +
         (SELECT count(*) FROM administradores WHERE caminho_foto=$1) +
         (SELECT count(*) FROM parceiros WHERE caminho_logo=$1) +
+        (SELECT count(*) FROM redes_sociais WHERE caminho_icone=$1) +
         (SELECT count(*) FROM configuracoes_portal WHERE caminho_logo=$1 OR caminho_favicon=$1)
       )::int quantidade`,
       [caminho],
@@ -38,6 +40,7 @@ export class RepositorioPainel {
          UNION ALL SELECT conteudo::text FROM publicacoes
          UNION ALL SELECT caminho_foto FROM administradores
          UNION ALL SELECT caminho_logo FROM parceiros
+         UNION ALL SELECT caminho_icone FROM redes_sociais
          UNION ALL SELECT caminho_logo FROM configuracoes_portal
          UNION ALL SELECT caminho_favicon FROM configuracoes_portal
        ) referencias WHERE caminho IS NOT NULL`,
@@ -47,6 +50,49 @@ export class RepositorioPainel {
   async listarParceiros() {
     const resultado = await conexao.query('SELECT id,nome,caminho_logo "caminhoLogo",endereco_site "enderecoSite",ativo,ordem FROM parceiros ORDER BY ordem,nome');
     return resultado.rows;
+  }
+  async listarRedesSociais() {
+    const resultado = await conexao.query(
+      'SELECT id,nome,endereco_url "enderecoUrl",caminho_icone "caminhoIcone",ativa,ordem FROM redes_sociais ORDER BY ordem,nome',
+    );
+    return resultado.rows;
+  }
+  async salvarRedeSocial(dados: DadosRedeSocial, id?: string) {
+    const parametros = [
+      dados.nome,
+      dados.enderecoUrl,
+      dados.caminhoIcone || null,
+      dados.ativa,
+      dados.ordem,
+    ];
+    const resultado = id
+      ? await conexao.query(
+          `UPDATE redes_sociais SET nome=$1,endereco_url=$2,caminho_icone=$3,
+           ativa=$4,ordem=$5,atualizado_em=now() WHERE id=$6
+           RETURNING id,nome,endereco_url "enderecoUrl",caminho_icone "caminhoIcone",ativa,ordem`,
+          [...parametros, id],
+        )
+      : await conexao.query(
+          `INSERT INTO redes_sociais(nome,endereco_url,caminho_icone,ativa,ordem)
+           VALUES($1,$2,$3,$4,$5)
+           RETURNING id,nome,endereco_url "enderecoUrl",caminho_icone "caminhoIcone",ativa,ordem`,
+          parametros,
+        );
+    return resultado.rows[0] ?? null;
+  }
+  async obterRedeSocial(id: string) {
+    const resultado = await conexao.query(
+      'SELECT id,caminho_icone "caminhoIcone" FROM redes_sociais WHERE id=$1',
+      [id],
+    );
+    return resultado.rows[0] ?? null;
+  }
+  async excluirRedeSocial(id: string) {
+    const resultado = await conexao.query(
+      'DELETE FROM redes_sociais WHERE id=$1 RETURNING caminho_icone "caminhoIcone"',
+      [id],
+    );
+    return resultado.rows[0] ?? null;
   }
   async salvarParceiro(dados: DadosParceiro, id?: string) {
     const resultado = id
@@ -376,6 +422,20 @@ export class RepositorioPainel {
       limite,
       paginas: Math.max(1, Math.ceil(total.rows[0].total / limite)),
     };
+  }
+  async listarInscritosExportacao(recentes: boolean) {
+    const resultado = await conexao.query<{
+      email: string;
+      inscritoEm: Date;
+      canceladoEm: Date | null;
+    }>(
+      `SELECT email,inscrito_em "inscritoEm",cancelado_em "canceladoEm"
+       FROM inscricoes_newsletter
+       WHERE ($1::boolean=false OR inscrito_em >= now()-interval '30 days')
+       ORDER BY inscrito_em DESC,id DESC`,
+      [recentes],
+    );
+    return resultado.rows;
   }
   async removerInscrito(id: string) {
     await conexao.query("DELETE FROM inscricoes_newsletter WHERE id=$1", [id]);

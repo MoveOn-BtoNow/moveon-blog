@@ -70,6 +70,7 @@ else cp .env ".env.backup.$(date +%Y%m%d%H%M%S)"; fi
 [[ -n "$(valor_env REDIS_HOST)" ]] || definir_env REDIS_HOST "127.0.0.1"
 [[ -n "$(valor_env REDIS_PORTA)" ]] || definir_env REDIS_PORTA "6380"
 [[ -n "$(valor_env REDIS_PREFIXO)" ]] || definir_env REDIS_PREFIXO "moveon"
+[[ -n "$(valor_env MAX_ICONE_REDE_MB)" ]] || definir_env MAX_ICONE_REDE_MB "4"
 definir_env REDIS_ATIVO true
 definir_env REDIS_URL "redis://:$(valor_env REDIS_SENHA)@127.0.0.1:$(valor_env REDIS_PORTA)"
 definir_env URL_PUBLICA_PORTAL "$URL_PLATAFORMA"

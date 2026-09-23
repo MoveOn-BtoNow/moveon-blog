@@ -18,6 +18,32 @@ export const parceiroEntrada = z
     ordem: z.number().int().min(0).max(10000).default(0),
   })
   .strict();
+const enderecoRedeSocial = z.string().trim().url().max(1000).refine(
+  (valor) => ["http:", "https:"].includes(new URL(valor).protocol),
+  "Utilize um endereço HTTP ou HTTPS.",
+);
+export const redeSocialEntrada = z
+  .object({
+    nome: z.string().trim().min(2).max(80),
+    enderecoUrl: enderecoRedeSocial,
+    caminhoIcone: z.union([
+      z.string().url().max(1000),
+      z.string().regex(/^\/uploads\/redes\/[a-f0-9-]+\.webp$/i),
+      z.literal(""),
+    ]),
+    ativa: z.boolean().default(true),
+    ordem: z.number().int().min(0).max(10000).default(0),
+  })
+  .strict()
+  .superRefine((dados, contexto) => {
+    if (!dados.caminhoIcone && !/^(instagram|linkedin)$/i.test(dados.nome))
+      contexto.addIssue({
+        code: "custom",
+        path: ["caminhoIcone"],
+        message: "Envie o ícone da rede social.",
+      });
+  });
+export type DadosRedeSocial = z.infer<typeof redeSocialEntrada>;
 export const publicacaoEntrada = z
   .object({
     titulo: z.string().trim().min(5).max(180),

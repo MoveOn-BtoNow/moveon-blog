@@ -34,8 +34,6 @@ type IdentidadePortal = {
   exibirOQueResolvemos: boolean;
   exibirContato: boolean;
   exibirRedesSociais: boolean;
-  instagramUrl: string;
-  linkedinUrl: string;
 };
 
 export default function PaginaSobre() {
@@ -176,15 +174,7 @@ export default function PaginaSobre() {
         </section>
       </main>
 
-      {identidade && (
-        <RedesSociaisFlutuantes
-          configuracao={{
-            exibirRedesSociais: identidade.exibirRedesSociais,
-            instagramUrl: identidade.instagramUrl,
-            linkedinUrl: identidade.linkedinUrl,
-          }}
-        />
-      )}
+      <RedesSociaisFlutuantes />
       <RodapePortal logo={identidade?.caminhoLogo || "/logo.png"} />
     </div>
   );

@@ -23,6 +23,17 @@ const receberImagem = multer({
       ),
     ),
 });
+const receberIconeRede = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: ambiente.MAX_ICONE_REDE_MB * 1024 * 1024, files: 1 },
+  fileFilter: (_req, arquivo, concluir) =>
+    concluir(
+      null,
+      ["image/jpeg", "image/png", "image/webp", "image/avif"].includes(
+        arquivo.mimetype,
+      ),
+    ),
+});
 const receberVideo=multer({storage:multer.memoryStorage(),limits:{fileSize:ambiente.MAX_VIDEO_MB*1024*1024,files:1},fileFilter:(_req,arquivo,concluir)=>concluir(null,["video/mp4","video/webm","video/quicktime"].includes(arquivo.mimetype))});
 rotasPainel.post(
   "/uploads/capas",
@@ -63,6 +74,21 @@ rotasPainel.post(
   c.enviarLogo,
 );
 rotasPainel.post(
+  "/uploads/icones-redes",
+  (requisicao, resposta, proximo) =>
+    receberIconeRede.single("imagem")(requisicao, resposta, (erro) =>
+      erro
+        ? resposta.status(400).json({
+            erro:
+              erro.code === "LIMIT_FILE_SIZE"
+                ? `O ícone deve ter no máximo ${ambiente.MAX_ICONE_REDE_MB} MB.`
+                : "Arquivo de ícone inválido.",
+          })
+        : proximo(),
+    ),
+  c.enviarIconeRedeSocial,
+);
+rotasPainel.post(
   "/uploads/perfil",
   (req, res, next) =>
     receberImagem.single("imagem")(req, res, (erro) =>
@@ -90,12 +116,17 @@ rotasPainel.put("/parceiros-exibicao", c.atualizarExibicaoCarrosselParceiros);
 rotasPainel.post("/parceiros", c.salvarParceiro);
 rotasPainel.put("/parceiros/:id", c.salvarParceiro);
 rotasPainel.delete("/parceiros/:id", c.excluirParceiro);
+rotasPainel.get("/redes-sociais", c.listarRedesSociais);
+rotasPainel.post("/redes-sociais", c.salvarRedeSocial);
+rotasPainel.put("/redes-sociais/:id", c.salvarRedeSocial);
+rotasPainel.delete("/redes-sociais/:id", c.excluirRedeSocial);
 rotasPainel.get("/categorias", c.listarCategorias);
 rotasPainel.post("/categorias", c.criarCategoria);
 rotasPainel.put("/categorias/:id", c.atualizarCategoria);
 rotasPainel.delete("/categorias/:id", c.excluirCategoria);
 rotasPainel.get("/metricas", c.metricas);
 rotasPainel.get("/newsletter", c.listarNewsletter);
+rotasPainel.get("/newsletter/exportar", c.exportarNewsletter);
 rotasPainel.delete("/newsletter/:id", c.removerNewsletter);
 rotasPainel.get("/newsletter-modelo", c.obterModeloNewsletter);
 rotasPainel.put("/newsletter-modelo", c.atualizarModeloNewsletter);

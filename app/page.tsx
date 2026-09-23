@@ -23,6 +23,7 @@ import {
   Code2,
   Eye,
   EyeOff,
+  FileSpreadsheet,
   FilePenLine,
   FolderTree,
   Heading2,
@@ -60,6 +61,7 @@ import {
   Undo2,
   UserRound,
   Video,
+  Download,
   X,
 } from "lucide-react";
 import RedesSociaisFlutuantes from "./componentes/RedesSociaisFlutuantes";
@@ -120,12 +122,21 @@ type Configuracoes = {
   instagramUrl: string;
   linkedinUrl: string;
 };
+type RedeSocial = {
+  id: string;
+  nome: string;
+  enderecoUrl: string;
+  caminhoIcone?: string | null;
+  ativa: boolean;
+  ordem: number;
+};
 type DadosPortal = {
   configuracoes: Configuracoes;
   categorias: Categoria[];
   publicacoes: Publicacao[];
   destaques: Publicacao[];
   parceiros: Parceiro[];
+  redesSociais: RedeSocial[];
   proximoCursor?: string | null;
 };
 type Parceiro = {
@@ -146,6 +157,18 @@ type ModeloNewsletterPainel = {
   assunto: string;
   texto: string;
   exibirNewsletter: boolean;
+};
+type InscritoNewsletterPainel = {
+  id: string;
+  email: string;
+  inscritoEm: string;
+  canceladoEm?: string | null;
+};
+type ListaNewsletterPainel = {
+  itens: InscritoNewsletterPainel[];
+  total: number;
+  pagina: number;
+  paginas: number;
 };
 type Tela =
   | "inicio"
@@ -1189,8 +1212,7 @@ function Portal({ aoAdministrar }: { aoAdministrar: () => void }) {
       <RedesSociaisFlutuantes
         configuracao={{
           exibirRedesSociais: dados.configuracoes.exibirRedesSociais,
-          instagramUrl: dados.configuracoes.instagramUrl,
-          linkedinUrl: dados.configuracoes.linkedinUrl,
+          redesSociais: dados.redesSociais,
         }}
       />
       {mostrarTopo && (
@@ -2901,22 +2923,19 @@ function Configuracao({
 }) {
   const [form, setForm] = useState(dados),
     [erro, setErro] = useState("");
+  async function salvarConfiguracoes() {
+    try {
+      await api("/painel/configuracoes", {
+        method: "PUT",
+        body: JSON.stringify(form),
+      });
+      salvo();
+    } catch (e) {
+      setErro((e as Error).message);
+    }
+  }
   return (
-    <form
-      className="dash-card pagina2"
-      onSubmit={async (e) => {
-        e.preventDefault();
-        try {
-          await api("/painel/configuracoes", {
-            method: "PUT",
-            body: JSON.stringify(form),
-          });
-          salvo();
-        } catch (e) {
-          setErro((e as Error).message);
-        }
-      }}
-    >
+    <div className="dash-card pagina2">
       <h2>Aparência e identidade do portal</h2>
       {erro && <div className="erro-api">{erro}</div>}
       <div className="config-grid2">
@@ -3015,28 +3034,7 @@ function Configuracao({
             />
           </label>
           <span />
-          <label>
-            Link do Instagram
-            <input
-              type="url"
-              value={form.instagramUrl}
-              onChange={(e) =>
-                setForm({ ...form, instagramUrl: e.target.value })
-              }
-              placeholder="https://www.instagram.com/..."
-            />
-          </label>
-          <label>
-            Link do LinkedIn
-            <input
-              type="url"
-              value={form.linkedinUrl}
-              onChange={(e) =>
-                setForm({ ...form, linkedinUrl: e.target.value })
-              }
-              placeholder="https://www.linkedin.com/company/..."
-            />
-          </label>
+          <GestaoRedesSociais />
         </div>
         <div
           className="preview-cores"
@@ -3051,11 +3049,248 @@ function Configuracao({
             Botões, destaques, fundos e textos serão aplicados ao portal.
           </span>
         </div>
-        <button className="salvar2">Salvar e aplicar no portal</button>
+        <button
+          type="button"
+          className="salvar2"
+          onClick={() => void salvarConfiguracoes()}
+        >
+          Salvar e aplicar no portal
+        </button>
       </div>
-    </form>
+    </div>
   );
 }
+
+function GestaoRedesSociais() {
+  const formularioVazio = {
+    nome: "",
+    enderecoUrl: "",
+    caminhoIcone: "",
+    ativa: true,
+    ordem: 10,
+  };
+  const [itens, setItens] = useState<RedeSocial[]>([]);
+  const [form, setForm] = useState(formularioVazio);
+  const [editando, setEditando] = useState<string | null>(null);
+  const [erro, setErro] = useState("");
+  const [carregando, setCarregando] = useState(true);
+  const [enviandoIcone, setEnviandoIcone] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+
+  async function carregar() {
+    try {
+      const resultado = await api<RedeSocial[]>("/painel/redes-sociais");
+      setItens(resultado);
+      setForm((atual) =>
+        editando ? atual : { ...atual, ordem: (resultado.length + 1) * 10 },
+      );
+    } catch (e) {
+      setErro((e as Error).message);
+    } finally {
+      setCarregando(false);
+    }
+  }
+
+  useEffect(() => {
+    api<RedeSocial[]>("/painel/redes-sociais")
+      .then((resultado) => {
+        setItens(resultado);
+        setForm((atual) => ({
+          ...atual,
+          ordem: (resultado.length + 1) * 10,
+        }));
+      })
+      .catch((e) => setErro((e as Error).message))
+      .finally(() => setCarregando(false));
+  }, []);
+
+  function limpar() {
+    setEditando(null);
+    setForm({ ...formularioVazio, ordem: (itens.length + 1) * 10 });
+    setErro("");
+  }
+
+  async function salvar() {
+    setErro("");
+    if (!form.nome.trim() || !form.enderecoUrl.trim() || !form.caminhoIcone) {
+      setErro("Informe o nome, o link e envie o ícone da rede social.");
+      return;
+    }
+    setSalvando(true);
+    try {
+      await api(`/painel/redes-sociais${editando ? `/${editando}` : ""}`, {
+        method: editando ? "PUT" : "POST",
+        body: JSON.stringify(form),
+      });
+      setEditando(null);
+      setForm(formularioVazio);
+      await carregar();
+    } catch (e) {
+      setErro((e as Error).message);
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  return (
+    <section className="gestao-redes-sociais">
+      <div className="redes-formulario">
+        <div className="redes-formulario-cabecalho">
+          <div>
+            <b>{editando ? "Editar rede social" : "Cadastrar rede social"}</b>
+            <span>O ícone é validado, redimensionado e convertido para WebP.</span>
+          </div>
+          {editando && (
+            <button type="button" onClick={limpar}>Cancelar edição</button>
+          )}
+        </div>
+        {erro && <div className="erro-api">{erro}</div>}
+        <div className="redes-campos">
+          <label>
+            Nome da rede social
+            <input
+              value={form.nome}
+              onChange={(e) => setForm({ ...form, nome: e.target.value })}
+              maxLength={80}
+              placeholder="Ex.: YouTube"
+            />
+          </label>
+          <label>
+            Link do perfil
+            <input
+              type="url"
+              value={form.enderecoUrl}
+              onChange={(e) => setForm({ ...form, enderecoUrl: e.target.value })}
+              placeholder="https://"
+            />
+          </label>
+          <label className="upload-config">
+            Ícone da rede social
+            <input
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/avif"
+              disabled={enviandoIcone}
+              onChange={async (e) => {
+                const arquivo = e.target.files?.[0];
+                if (!arquivo) return;
+                setEnviandoIcone(true);
+                setErro("");
+                try {
+                  const caminho = await enviarImagemGenerica(
+                    "/painel/uploads/icones-redes",
+                    arquivo,
+                  );
+                  setForm((atual) => ({ ...atual, caminhoIcone: caminho }));
+                } catch (falha) {
+                  setErro((falha as Error).message);
+                } finally {
+                  setEnviandoIcone(false);
+                  e.target.value = "";
+                }
+              }}
+            />
+          </label>
+          <label>
+            Ordem de exibição
+            <input
+              type="number"
+              min="0"
+              max="10000"
+              value={form.ordem}
+              onChange={(e) => setForm({ ...form, ordem: Number(e.target.value) })}
+            />
+          </label>
+          <label className="check-real">
+            <input
+              type="checkbox"
+              checked={form.ativa}
+              onChange={(e) => setForm({ ...form, ativa: e.target.checked })}
+            />{" "}
+            Exibir este botão no portal
+          </label>
+          <div className="redes-icone-previa">
+            {form.caminhoIcone ? (
+              <img src={urlImagemExibicao(form.caminhoIcone)} alt="Prévia do ícone" />
+            ) : (
+              <Image aria-hidden="true" />
+            )}
+            <span>{enviandoIcone ? "Otimizando ícone…" : "Prévia do ícone"}</span>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="salvar2"
+          disabled={salvando || enviandoIcone}
+          onClick={() => void salvar()}
+        >
+          {salvando ? "Salvando…" : editando ? "Salvar rede social" : "Adicionar rede social"}
+        </button>
+      </div>
+
+      <div className="redes-lista" aria-live="polite">
+        {carregando && <p>Carregando redes sociais…</p>}
+        {!carregando && !itens.length && (
+          <p>Nenhuma rede social cadastrada.</p>
+        )}
+        {itens.map((item) => (
+          <article key={item.id}>
+            {item.caminhoIcone ? (
+              <img src={urlImagemExibicao(item.caminhoIcone)} alt="" />
+            ) : (
+              <span className="rede-icone-legado">{item.nome.slice(0, 1)}</span>
+            )}
+            <div>
+              <b>{item.nome}</b>
+              <a href={item.enderecoUrl} target="_blank" rel="noopener noreferrer">
+                {item.enderecoUrl}
+              </a>
+              <small>{item.ativa ? "Visível no portal" : "Oculta"}</small>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setEditando(item.id);
+                setForm({
+                  nome: item.nome,
+                  enderecoUrl: item.enderecoUrl,
+                  caminhoIcone: item.caminhoIcone || "",
+                  ativa: item.ativa,
+                  ordem: item.ordem,
+                });
+                setErro("");
+              }}
+            >
+              <Pencil /> Editar
+            </button>
+            <button
+              type="button"
+              className="perigo"
+              onClick={async () => {
+                const confirmacao = await abrirModal({
+                  titulo: "Excluir rede social?",
+                  mensagem: `O botão ${item.nome} e seu ícone enviado serão excluídos.`,
+                  confirmar: "Excluir",
+                  perigo: true,
+                });
+                if (confirmacao === false) return;
+                try {
+                  await api(`/painel/redes-sociais/${item.id}`, { method: "DELETE" });
+                  if (editando === item.id) limpar();
+                  await carregar();
+                } catch (e) {
+                  setErro((e as Error).message);
+                }
+              }}
+            >
+              <Trash2 /> Excluir
+            </button>
+          </article>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function DadosAdmin({
   dados,
   mudou,
@@ -3749,18 +3984,20 @@ function PainelContato({
 
 function PainelNewsletter() {
   const [pagina, setPagina] = useState(1),
-    [dados, setDados] = useState<any>(null),
+    [dados, setDados] = useState<ListaNewsletterPainel | null>(null),
     [modelo, setModelo] = useState<ModeloNewsletterPainel>({
       assunto: "",
       texto: "",
       exibirNewsletter: true,
     }),
     [erro, setErro] = useState(""),
-    [salvando, setSalvando] = useState(false);
+    [salvando, setSalvando] = useState(false),
+    [mostrarExportacao, setMostrarExportacao] = useState(false),
+    [exportando, setExportando] = useState<"todos" | "recentes" | null>(null);
   const carregar = () =>
     Promise.all([
-      api<any>(`/painel/newsletter?pagina=${pagina}`),
-      api<any>("/painel/newsletter-modelo"),
+      api<ListaNewsletterPainel>(`/painel/newsletter?pagina=${pagina}`),
+      api<ModeloNewsletterPainel>("/painel/newsletter-modelo"),
     ])
       .then(([lista, m]) => {
         setDados(lista);
@@ -3785,6 +4022,35 @@ function PainelNewsletter() {
       setErro((e as Error).message);
     } finally {
       setSalvando(false);
+    }
+  }
+  async function exportar(escopo: "todos" | "recentes") {
+    setExportando(escopo);
+    setErro("");
+    try {
+      const resposta = await fetch(`/api/painel/newsletter/exportar?escopo=${escopo}`, {
+        credentials: "include",
+      });
+      if (!resposta.ok) {
+        const corpo = (await resposta.json().catch(() => ({}))) as { erro?: string };
+        throw new Error(corpo.erro || "Não foi possível exportar a planilha.");
+      }
+      const disposicao = resposta.headers.get("Content-Disposition") || "";
+      const nome = disposicao.match(/filename="([^"]+)"/)?.[1]
+        || `newsletter-moveon-${escopo}.xlsx`;
+      const endereco = URL.createObjectURL(await resposta.blob());
+      const link = document.createElement("a");
+      link.href = endereco;
+      link.download = nome;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(endereco);
+      setMostrarExportacao(false);
+    } catch (e) {
+      setErro((e as Error).message);
+    } finally {
+      setExportando(null);
     }
   }
   useEffect(() => {
@@ -3853,9 +4119,40 @@ function PainelNewsletter() {
             <small>INSCRITOS</small>
             <h2>E-mails cadastrados</h2>
           </div>
-          <b>{dados?.total || 0} no total</b>
+          <div className="newsletter-cabecalho-acoes">
+            <b>{dados?.total || 0} no total</b>
+            <button
+              type="button"
+              className="exportar-newsletter"
+              onClick={() => setMostrarExportacao(true)}
+            >
+              <FileSpreadsheet /> Exportar para Excel
+            </button>
+          </div>
         </div>
-        {dados?.itens?.map((i: any) => (
+        {mostrarExportacao && (
+          <div className="modal-overlay">
+            <section className="modal-personalizado modal-exportacao-newsletter" role="dialog" aria-modal="true" aria-labelledby="titulo-exportacao-newsletter">
+              <button type="button" className="modal-fechar" aria-label="Fechar exportação" disabled={Boolean(exportando)} onClick={() => setMostrarExportacao(false)}><X /></button>
+              <span>EXPORTAÇÃO PERSONALIZADA</span>
+              <h2 id="titulo-exportacao-newsletter">Quais e-mails deseja exportar?</h2>
+              <p>O arquivo Excel será gerado com a identidade visual MOVE.ON, resumo, filtros, status e datas de cadastro.</p>
+              <div className="opcoes-exportacao-newsletter">
+                <button type="button" disabled={Boolean(exportando)} onClick={() => void exportar("todos")}>
+                  <FileSpreadsheet />
+                  <span><strong>Todos os e-mails</strong><small>Base completa, incluindo ativos e cancelados.</small></span>
+                  {exportando === "todos" ? "Gerando…" : <Download />}
+                </button>
+                <button type="button" disabled={Boolean(exportando)} onClick={() => void exportar("recentes")}>
+                  <FileSpreadsheet />
+                  <span><strong>E-mails recentes</strong><small>Cadastros realizados nos últimos 30 dias.</small></span>
+                  {exportando === "recentes" ? "Gerando…" : <Download />}
+                </button>
+              </div>
+            </section>
+          </div>
+        )}
+        {dados?.itens?.map((i) => (
           <div className="inscrito-newsletter" key={i.id}>
             <div>
               <b>{i.email}</b>

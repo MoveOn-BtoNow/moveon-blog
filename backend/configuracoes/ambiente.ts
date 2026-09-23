@@ -35,6 +35,7 @@ const esquemaAmbiente = z.object({
   CUSTO_HASH_SENHA: z.coerce.number().int().min(10).max(15),
   PASTA_UPLOADS: z.string().min(1),
   MAX_IMAGEM_CAPA_MB: z.coerce.number().int().min(1).max(20),
+  MAX_ICONE_REDE_MB: z.coerce.number().int().min(1).max(10).default(4),
   MAX_VIDEO_MB: z.coerce.number().int().min(10).max(1000),
   LIMITE_PUBLICACOES_DESTAQUE: z.coerce.number().int().min(1).max(20),
   LIMPEZA_MIDIAS_ORFAS_HORAS: z.coerce.number().int().min(1).max(720).default(24),

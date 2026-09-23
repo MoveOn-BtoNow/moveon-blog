@@ -9,12 +9,14 @@ import {
   configuracaoEntrada,
   publicacaoEntrada,
   parceiroEntrada,
+  redeSocialEntrada,
 } from "./painel.validacao";
 import {
   armazenarCapa,
   armazenarFotoPerfil,
   armazenarImagemConteudo,
   armazenarLogo,
+  armazenarIconeRedeSocial,
   excluirMidiaGerenciada,
   extrairUrlsDeMidia,
   fotoPerfilExiste,
@@ -23,6 +25,8 @@ import { servicoNewsletter } from "../newsletter/newsletter.servico";
 import { z } from "zod";
 import { criarCookieExpirado } from "../../compartilhado/http/cookies";
 import { armazenarVideo } from "./armazenamento-videos";
+import { gerarPlanilhaNewsletter } from "../newsletter/newsletter-exportacao.servico";
+import { obterChaveObjeto } from "../integracoes/armazenamento-objetos";
 
 const repositorio = new RepositorioPainel();
 const idParametro = (requisicao: Request) => String(requisicao.params.id);
@@ -69,6 +73,62 @@ export class ControladorPainel {
     await excluirSeNaoUtilizada(item?.caminhoLogo);
     resposta.status(204).end();
   };
+  listarRedesSociais = async (_: Request, resposta: Response) =>
+    resposta.json(await repositorio.listarRedesSociais());
+  salvarRedeSocial = async (requisicao: Request, resposta: Response) => {
+    const validacao = redeSocialEntrada.safeParse(requisicao.body);
+    if (!validacao.success) {
+      resposta.status(400).json({
+        erro: "Revise os dados da rede social.",
+        detalhes: validacao.error.flatten(),
+      });
+      return;
+    }
+    const identificador = requisicao.params.id
+      ? z.uuid().safeParse(idParametro(requisicao))
+      : null;
+    if (identificador && !identificador.success) {
+      resposta.status(400).json({ erro: "Rede social inválida." });
+      return;
+    }
+    if (validacao.data.caminhoIcone) {
+      const chaveRemota = await obterChaveObjeto(validacao.data.caminhoIcone);
+      const caminhoLocalGerenciado =
+        /^\/uploads\/redes\/[a-f0-9-]+\.webp$/i.test(
+          validacao.data.caminhoIcone,
+        );
+      if (!caminhoLocalGerenciado && !/^redes\/[a-f0-9-]+\.webp$/i.test(chaveRemota || "")) {
+        resposta.status(400).json({
+          erro: "Envie o ícone pela plataforma antes de salvar a rede social.",
+        });
+        return;
+      }
+    }
+    const id = identificador?.data;
+    const anterior = id ? await repositorio.obterRedeSocial(id) : null;
+    if (id && !anterior) {
+      resposta.status(404).json({ erro: "Rede social não encontrada." });
+      return;
+    }
+    const item = await repositorio.salvarRedeSocial(validacao.data, id);
+    if (anterior?.caminhoIcone && anterior.caminhoIcone !== validacao.data.caminhoIcone)
+      await excluirSeNaoUtilizada(anterior.caminhoIcone);
+    resposta.status(id ? 200 : 201).json(item);
+  };
+  excluirRedeSocial = async (requisicao: Request, resposta: Response) => {
+    const identificador = z.uuid().safeParse(idParametro(requisicao));
+    if (!identificador.success) {
+      resposta.status(400).json({ erro: "Rede social inválida." });
+      return;
+    }
+    const item = await repositorio.excluirRedeSocial(identificador.data);
+    if (!item) {
+      resposta.status(404).json({ erro: "Rede social não encontrada." });
+      return;
+    }
+    await excluirSeNaoUtilizada(item.caminhoIcone);
+    resposta.status(204).end();
+  };
   obterExibicaoCarrosselParceiros = async (_: Request, resposta: Response) =>
     resposta.json({ exibir: await repositorio.exibicaoCarrosselParceiros() });
   atualizarExibicaoCarrosselParceiros = async (requisicao: Request, resposta: Response) => {
@@ -92,6 +152,17 @@ export class ControladorPainel {
       resposta.status(201).json({ caminho: await armazenarLogo(requisicao.file) });
     } catch (erro) {
       resposta.status(400).json({ erro: erro instanceof Error ? erro.message : "Imagem inválida." });
+    }
+  };
+  enviarIconeRedeSocial = async (requisicao: Request, resposta: Response) => {
+    try {
+      resposta.status(201).json({
+        caminho: await armazenarIconeRedeSocial(requisicao.file),
+      });
+    } catch (erro) {
+      resposta.status(400).json({
+        erro: erro instanceof Error ? erro.message : "Ícone inválido.",
+      });
     }
   };
   enviarFotoPerfil = async (requisicao: Request, resposta: Response) => {
@@ -344,6 +415,22 @@ export class ControladorPainel {
         20,
       ),
     );
+  exportarNewsletter = async (req: Request, res: Response) => {
+    const validacao = z.enum(["todos", "recentes"]).safeParse(req.query.escopo);
+    if (!validacao.success) {
+      res.status(400).json({ erro: "Selecione todos os e-mails ou somente os recentes." });
+      return;
+    }
+    const itens = await repositorio.listarInscritosExportacao(validacao.data === "recentes");
+    const arquivo = await gerarPlanilhaNewsletter(itens, validacao.data);
+    const data = new Intl.DateTimeFormat("sv-SE", { timeZone: "America/Sao_Paulo" })
+      .format(new Date());
+    res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    res.setHeader("Content-Disposition", `attachment; filename="newsletter-moveon-${validacao.data}-${data}.xlsx"`);
+    res.setHeader("Cache-Control", "no-store");
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.send(arquivo);
+  };
   removerNewsletter = async (req: Request, res: Response) => {
     await repositorio.removerInscrito(idParametro(req));
     res.status(204).end();
