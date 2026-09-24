@@ -352,3 +352,20 @@ footer.rodape-portal .rodape-base{justify-content:center;flex-wrap:wrap;text-ali
 .redes-icone-previa{display:flex;align-items:center;gap:12px;color:var(--muted);font-size:14px}.redes-icone-previa img,.redes-icone-previa>svg,.redes-lista article>img,.rede-icone-legado{width:52px;height:52px;flex:none;padding:9px;border:1px solid var(--line);border-radius:14px;background:#fff;object-fit:contain}.rede-icone-legado{display:grid;place-items:center;color:var(--red);font-size:22px;font-weight:900}
 .redes-formulario>.salvar2{justify-self:start}.redes-lista{display:grid;gap:10px}.redes-lista>p{margin:0;padding:18px;color:var(--muted);text-align:center}.redes-lista article{display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:13px;padding:14px;border:1px solid var(--line);border-radius:16px;background:var(--card)}.redes-lista article>div{display:grid;min-width:0;gap:3px}.redes-lista article a{overflow:hidden;color:var(--muted);font-size:13px;text-overflow:ellipsis;white-space:nowrap}.redes-lista article small{color:var(--red);font-weight:800}.redes-lista button.perigo{color:#c3261b;border-color:#c3261b55}
 @media(max-width:760px){.redes-campos{grid-template-columns:1fr}.redes-lista article{grid-template-columns:auto minmax(0,1fr)}.redes-lista article>button{width:100%}.redes-formulario-cabecalho{flex-direction:column}}
+
+/* Destaque compacto: preserva a capa e mantém o selo sempre na mesma posição. */
+.hero{height:580px;min-height:0;background:#090909}
+.hero-img{background-color:#090909;background-size:cover;background-position:center;background-repeat:no-repeat}
+.hero-content{max-width:min(760px,72%);padding:48px 7vw 68px;justify-content:flex-start}
+.hero-content .chapeu{flex:none;min-height:18px;margin:0 0 12px}
+.hero-content h1{display:-webkit-box;max-width:720px;margin:0 0 12px;overflow:hidden;font-size:clamp(34px,4vw,55px);line-height:1.06;-webkit-box-orient:vertical;-webkit-line-clamp:3;text-wrap:balance}
+.hero-content p{display:-webkit-box;max-width:640px;margin:0 0 18px;overflow:hidden;font-size:19px;line-height:1.45;-webkit-box-orient:vertical;-webkit-line-clamp:2}
+.hero-content .primario{margin-top:auto;min-height:52px}
+.hero .dots{bottom:20px}
+@media(max-width:760px){
+  .hero{height:540px}
+  .hero-img{background-size:cover;background-position:center}
+  .hero-content{max-width:100%;padding:34px 22px 62px}
+  .hero-content h1{font-size:clamp(29px,8.5vw,38px);-webkit-line-clamp:3}
+  .hero-content p{font-size:16px;line-height:1.4;-webkit-line-clamp:3}
+}
