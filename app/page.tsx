@@ -42,6 +42,7 @@ import {
   Link2Off,
   List,
   ListOrdered,
+  LoaderCircle,
   LogIn,
   Menu,
   Mail,
@@ -587,7 +588,6 @@ function Portal({ aoAdministrar }: { aoAdministrar: () => void }) {
     [termo, setTermo] = useState(""),
     [busca, setBusca] = useState(false),
     [aberta, setAberta] = useState<Publicacao | null>(null),
-    [limite, setLimite] = useState(6),
     [escuro, setEscuro] = useState(false),
     [indiceDestaque, setIndiceDestaque] = useState(0),
     [mostrarTopo, setMostrarTopo] = useState(false),
@@ -622,7 +622,6 @@ function Portal({ aoAdministrar }: { aoAdministrar: () => void }) {
           atual ? { ...atual, publicacoes: resultado.itens } : atual,
         );
         setCursor(resultado.proximoCursor);
-        setLimite(resultado.itens.length);
       } catch (e) {
         setErro((e as Error).message);
       }
@@ -731,44 +730,50 @@ function Portal({ aoAdministrar }: { aoAdministrar: () => void }) {
     };
   }, [dados]);
   const filtradas = useMemo(() => dados?.publicacoes || [], [dados]);
+  const carregarMais = async () => {
+    if (!cursor || carregandoMais || !dados) return;
+    setCarregandoMais(true);
+    try {
+      const slugCategoria = dados.categorias.find(
+        (c) => c.nome === categoria,
+      )?.slug;
+      const parametros = new URLSearchParams({ limite: "12", cursor });
+      if (termo.trim()) parametros.set("busca", termo.trim());
+      if (slugCategoria) parametros.set("categoria", slugCategoria);
+      const resultado = await api<{
+        itens: Publicacao[];
+        proximoCursor: string | null;
+      }>(`/portal/publicacoes?${parametros}`);
+      setDados((atual) =>
+        atual
+          ? {
+              ...atual,
+              publicacoes: [
+                ...atual.publicacoes,
+                ...resultado.itens.filter(
+                  (novo) =>
+                    !atual.publicacoes.some(
+                      (existente) => existente.id === novo.id,
+                    ),
+                ),
+              ],
+            }
+          : atual,
+      );
+      setCursor(resultado.proximoCursor);
+    } catch (e) {
+      console.error("Erro ao carregar mais publicações:", e);
+    } finally {
+      setCarregandoMais(false);
+    }
+  };
   useEffect(() => {
     const el = sentinela.current;
-    if (!el) return;
+    if (!el || !cursor || carregandoMais) return;
     const obs = new IntersectionObserver(
       ([item]) => {
-        if (item.isIntersecting && cursor && !carregandoMais && dados) {
-          setCarregandoMais(true);
-          const slugCategoria = dados.categorias.find(
-            (c) => c.nome === categoria,
-          )?.slug;
-          const parametros = new URLSearchParams({ limite: "12", cursor });
-          if (termo.trim()) parametros.set("busca", termo.trim());
-          if (slugCategoria) parametros.set("categoria", slugCategoria);
-          api<{ itens: Publicacao[]; proximoCursor: string | null }>(
-            `/portal/publicacoes?${parametros}`,
-          )
-            .then((resultado) => {
-              setDados((atual) =>
-                atual
-                  ? {
-                      ...atual,
-                      publicacoes: [
-                        ...atual.publicacoes,
-                        ...resultado.itens.filter(
-                          (novo) =>
-                            !atual.publicacoes.some(
-                              (existente) => existente.id === novo.id,
-                            ),
-                        ),
-                      ],
-                    }
-                  : atual,
-              );
-              setCursor(resultado.proximoCursor);
-              setLimite((n) => n + resultado.itens.length);
-            })
-            .catch((e) => setErro(e.message))
-            .finally(() => setCarregandoMais(false));
+        if (item.isIntersecting) {
+          void carregarMais();
         }
       },
       { rootMargin: "300px" },
@@ -778,7 +783,6 @@ function Portal({ aoAdministrar }: { aoAdministrar: () => void }) {
   }, [cursor, carregandoMais, dados, categoria, termo]);
   function selecionarCategoria(c?: Categoria) {
     setCategoria(c?.nome || "");
-    setLimite(6);
     if (c) registrar({ tipo: "clique_categoria", categoriaId: c.id });
   }
   function limparPesquisa() {
@@ -1147,7 +1151,7 @@ function Portal({ aoAdministrar }: { aoAdministrar: () => void }) {
         </div>
         {filtradas.length ? (
           <div className="grid-posts">
-            {filtradas.slice(0, limite).map((p) => (
+            {filtradas.map((p) => (
               <article
                 className="post-card"
                 key={p.id}
@@ -1197,13 +1201,26 @@ function Portal({ aoAdministrar }: { aoAdministrar: () => void }) {
             <p>Publique um conteúdo no dashboard ou altere os filtros.</p>
           </div>
         )}
-        <div className="sentinela-posts" ref={sentinela}>
-          <small>
-            {limite < filtradas.length
-              ? "Carregando mais publicações…"
-              : "Você chegou ao fim"}
-          </small>
-        </div>
+        {filtradas.length > 0 && (
+          <div className="sentinela-posts" ref={sentinela}>
+            {carregandoMais ? (
+              <span>
+                <LoaderCircle size={20} />
+                Carregando mais publicações…
+              </span>
+            ) : cursor ? (
+              <button
+                type="button"
+                className="carregar-mais-publico"
+                onClick={carregarMais}
+              >
+                Carregar mais publicações
+              </button>
+            ) : (
+              <small>Você chegou ao fim</small>
+            )}
+          </div>
+        )}
       </main>
       {dados.configuracoes.exibirNewsletter && (
         <InscricaoNewsletter nome={dados.configuracoes.nome} />
