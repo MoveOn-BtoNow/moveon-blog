@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import PaginaBlueprint from "@/components/landing/blueprint/PaginaBlueprint";
-import "@/styles/landing/blueprint.css";
+import TelaBlueprint from "@/screens/landing/Blueprint/blueprint";
 
 export const metadata: Metadata = {
   "title": {
@@ -12,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <PaginaBlueprint />;
+  return <TelaBlueprint />;
 }

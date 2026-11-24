@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import PaginaBpm from "@/components/landing/bpm/PaginaBpm";
-import "@/styles/landing/bpm.css";
+import TelaBpm from "@/screens/landing/Bpm/bpm";
 
 export const metadata: Metadata = {
   "title": {
@@ -12,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <PaginaBpm />;
+  return <TelaBpm />;
 }

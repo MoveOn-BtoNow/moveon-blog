@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import PaginaInicio from "@/components/landing/index/PaginaInicio";
-import "@/styles/landing/index.css";
+import TelaInicio from "@/screens/landing/Inicio/inicio";
 
 export const metadata: Metadata = {
   "title": {
@@ -22,5 +21,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <PaginaInicio />;
+  return <TelaInicio />;
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import CabecalhoSite from "@/components/compartilhados/CabecalhoSite";
+import CabecalhoSite from "@/layout/CabecalhoSite";
 
 type Identidade = {
   corPrimaria: string;

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import PaginaCleanCoreStudio from "@/components/landing/clean-core-studio/PaginaCleanCoreStudio";
-import "@/styles/landing/clean-core-studio.css";
+import TelaCleanCoreStudio from "@/screens/landing/CleanCoreStudio/clean-core-studio";
 
 export const metadata: Metadata = {
   "title": {
@@ -12,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <PaginaCleanCoreStudio />;
+  return <TelaCleanCoreStudio />;
 }

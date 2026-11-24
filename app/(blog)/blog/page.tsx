@@ -61,7 +61,7 @@ import {
   Download,
   X,
 } from "lucide-react";
-import CabecalhoSite from "@/components/compartilhados/CabecalhoSite";
+import CabecalhoSite from "@/layout/CabecalhoSite";
 import RedesSociaisFlutuantes from "../componentes/RedesSociaisFlutuantes";
 import RodapePortal from "../componentes/RodapePortal";
 

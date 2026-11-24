@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import Pagina4s4Governance from "@/components/landing/4s4-governance/Pagina4s4Governance";
-import "@/styles/landing/4s4-governance.css";
+import TelaGovernance4s4 from "@/screens/landing/Governance4s4/4s4-governance";
 
 export const metadata: Metadata = {
   "title": {
@@ -12,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <Pagina4s4Governance />;
+  return <TelaGovernance4s4 />;
 }

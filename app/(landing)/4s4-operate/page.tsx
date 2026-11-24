@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import Pagina4s4Operate from "@/components/landing/4s4-operate/Pagina4s4Operate";
-import "@/styles/landing/4s4-operate.css";
+import TelaOperate4s4 from "@/screens/landing/Operate4s4/4s4-operate";
 
 export const metadata: Metadata = {
   "title": {
@@ -12,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <Pagina4s4Operate />;
+  return <TelaOperate4s4 />;
 }

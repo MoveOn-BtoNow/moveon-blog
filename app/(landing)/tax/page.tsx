@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import PaginaTax from "@/components/landing/tax/PaginaTax";
-import "@/styles/landing/tax.css";
+import TelaTax from "@/screens/landing/Tax/tax";
 
 export const metadata: Metadata = {
   "title": {
@@ -22,5 +21,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <PaginaTax />;
+  return <TelaTax />;
 }

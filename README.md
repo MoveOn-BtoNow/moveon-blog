@@ -9,14 +9,16 @@ O site institucional (antigo repositório `MOVEON-LANDING-PAGE`) e o blog rodam 
 - `app/(landing)/`: página inicial em `/` e as soluções em `/pmo`, `/tax`, `/coe-sap`, `/clean-core-studio`, `/bpm`, `/blueprint`, `/4s4-governance` e `/4s4-operate`.
 - `app/(blog)/`: o blog, com a home em `/blog` e as demais páginas (`/admin`, `/publicacao/...`, `/sobre` etc.) nos mesmos endereços de antes.
 
-Estrutura das landing pages:
+Estrutura das landing pages (o código do blog continua em `app/(blog)/`):
 
-- `components/landing/<pagina>/`: uma página (`Pagina*.tsx`) montada a partir de componentes de seção (`Secao*.tsx`), com o conteúdo de formulário e FAQ em `dados.ts`.
-- `components/landing/compartilhados/`: cabeçalho, formulário de lead, FAQ, animação de rede, Google Tag Manager e o elemento raiz `RaizLanding`.
+- `app/(landing)/<rota>/page.tsx`: só a rota e os metadados (SEO); chama a tela correspondente.
+- `screens/landing/<Tela>/`: a tela de verdade. Cada uma tem o arquivo principal (`pmo.tsx`, por exemplo), o CSS dela (`pmo.css`, escopado pela classe `.lp-<pagina>`), `components/` com as seções usadas só por essa tela e `constants/` com os dados (formulário, FAQ, conteúdo e dados estruturados).
+- `components/`: componentes reutilizáveis entre telas (formulário de lead, FAQ, selo do hero, animação de rede, Google Tag Manager).
+- `layout/`: estrutura comum a todo o site (cabeçalho, rodapé, menu e o elemento raiz das landing pages). O blog também usa o cabeçalho e o rodapé daqui.
 - `hooks/`: comportamentos reutilizáveis (menu, revelar ao rolar, contadores, carrossel, formulário, animação).
 - `services/lead.service.ts`: envio de leads pelo FormSubmit, com o e-mail do visitante como alternativa.
 - `interfaces/`: tipos e contratos dos dados.
-- `styles/landing/<pagina>.css`: CSS de cada página, escopado pela classe `.lp-<pagina>`.
+- `styles/`: CSS dos componentes compartilhados (cabeçalho, rodapé e selo).
 - `public/landing/`: imagens das landing pages.
 
 ## Instalação automática no Ubuntu Server

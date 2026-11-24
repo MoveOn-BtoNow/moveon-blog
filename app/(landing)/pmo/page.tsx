@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import PaginaPmo from "@/components/landing/pmo/PaginaPmo";
-import "@/styles/landing/pmo.css";
+import TelaPmo from "@/screens/landing/Pmo/pmo";
 
 export const metadata: Metadata = {
   "title": {
@@ -22,5 +21,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <PaginaPmo />;
+  return <TelaPmo />;
 }

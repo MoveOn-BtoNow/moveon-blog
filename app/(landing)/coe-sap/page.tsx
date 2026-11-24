@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import PaginaCoeSap from "@/components/landing/coe-sap/PaginaCoeSap";
-import "@/styles/landing/coe-sap.css";
+import TelaCoeSap from "@/screens/landing/CoeSap/coe-sap";
 
 export const metadata: Metadata = {
   "title": {
@@ -22,5 +21,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <PaginaCoeSap />;
+  return <TelaCoeSap />;
 }
