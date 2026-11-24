@@ -2,6 +2,23 @@
 
 Portal de conteúdo com interface pública, dashboard autenticado, PostgreSQL, métricas reais e upload seguro de imagens.
 
+## Landing pages e blog
+
+O site institucional (antigo repositório `MOVEON-LANDING-PAGE`) e o blog rodam na mesma aplicação, separados por dois grupos de rotas, cada um com seu próprio layout raiz (o CSS de um não afeta o outro):
+
+- `app/(landing)/`: página inicial em `/` e as soluções em `/pmo`, `/tax`, `/coe-sap`, `/clean-core-studio`, `/bpm`, `/blueprint`, `/4s4-governance` e `/4s4-operate`.
+- `app/(blog)/`: o blog, com a home em `/blog` e as demais páginas (`/admin`, `/publicacao/...`, `/sobre` etc.) nos mesmos endereços de antes.
+
+Estrutura das landing pages:
+
+- `components/landing/<pagina>/`: uma página (`Pagina*.tsx`) montada a partir de componentes de seção (`Secao*.tsx`), com o conteúdo de formulário e FAQ em `dados.ts`.
+- `components/landing/compartilhados/`: cabeçalho, formulário de lead, FAQ, animação de rede, Google Tag Manager e o elemento raiz `RaizLanding`.
+- `hooks/`: comportamentos reutilizáveis (menu, revelar ao rolar, contadores, carrossel, formulário, animação).
+- `services/lead.service.ts`: envio de leads pelo FormSubmit, com o e-mail do visitante como alternativa.
+- `interfaces/`: tipos e contratos dos dados.
+- `styles/landing/<pagina>.css`: CSS de cada página, escopado pela classe `.lp-<pagina>`.
+- `public/landing/`: imagens das landing pages.
+
 ## Instalação automática no Ubuntu Server
 
 Na raiz do projeto, execute:

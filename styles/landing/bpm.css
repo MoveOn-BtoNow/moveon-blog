@@ -1,0 +1,124 @@
+/* Estilos da landing page "bpm" — escopados por .lp-bpm (gerado a partir do HTML original) */
+
+  :root:where(:has(.lp-bpm)){
+    --ink:#050505;
+    --panel:#050505;
+    --section-alt:#070709;
+    --line: rgba(255,255,255,.13);
+    --muted: rgba(255,255,255,.62);
+    --brand:#fe3000;
+    --brand-tint: rgba(254,48,0,.1);
+    --secondary-btn:#26262b;
+    --radius-card:22px;
+  }
+  :where(html:has(.lp-bpm)) *{box-sizing:border-box;}
+  html:where(:has(.lp-bpm)){scroll-behavior:smooth;}
+  :where(html:has(.lp-bpm)) body{margin:0;background:var(--ink);color:#fff;font-family:'Inter',Arial,sans-serif;line-height:1.6;-webkit-font-smoothing:antialiased;}
+  :where(html:has(.lp-bpm)) h1,:where(html:has(.lp-bpm)) h2,:where(html:has(.lp-bpm)) h3{font-family:'Space Grotesk',Inter,Arial,sans-serif;font-weight:700;margin:0;letter-spacing:-0.01em;color:#fff;}
+  :where(html:has(.lp-bpm)) a{color:inherit;text-decoration:none;}
+  :where(html:has(.lp-bpm)) .container{max-width:1120px;margin:0 auto;padding:0 24px;}
+  :where(html:has(.lp-bpm)) .section{padding:88px 0;background:var(--ink);}
+  :where(html:has(.lp-bpm)) .section.dim{background:var(--section-alt);}
+  :where(html:has(.lp-bpm)) .btn{display:inline-flex;align-items:center;gap:8px;padding:17px 36px;border-radius:999px;font-weight:700;font-size:14.5px;cursor:pointer;border:0.83px solid transparent;transition:transform .15s ease, opacity .15s ease;}
+  :where(html:has(.lp-bpm)) .btn:hover{transform:translateY(-1px);}
+  :where(html:has(.lp-bpm)) .btn-primary{background:var(--brand);color:#fff;}
+  :where(html:has(.lp-bpm)) .btn-secondary{background:var(--secondary-btn);color:#fff;border-color:rgba(255,255,255,.16);}
+  :where(html:has(.lp-bpm)) .btn-small{padding:9px 18px;font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;}
+  :where(html:has(.lp-bpm)) .btn-block{width:100%;justify-content:center;}
+  :where(html:has(.lp-bpm)) header{position:sticky;top:0;z-index:50;background:rgba(5,5,5,.85);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);}
+  :where(html:has(.lp-bpm)) .nav{display:flex;align-items:center;justify-content:space-between;padding:16px 24px;max-width:1120px;margin:0 auto;}
+  :where(html:has(.lp-bpm)) .nav img{height:30px;display:block;}
+  :where(html:has(.lp-bpm)) .navlinks{display:flex;gap:30px;color:rgba(255,255,255,.75);font-size:14px;font-weight:500;}
+  :where(html:has(.lp-bpm)) .navlinks a:hover{color:#fff;}
+  @media(max-width:760px){:where(html:has(.lp-bpm)) .navlinks{display:none;}}
+  :where(html:has(.lp-bpm)) .eyebrow{display:inline-flex;align-items:center;font-size:12.5px;font-weight:600;color:var(--brand);background:var(--brand-tint);border:0.83px solid rgba(254,48,0,.38);border-radius:999px;padding:7px 16px;margin-bottom:24px;}
+  :where(html:has(.lp-bpm)) .hero{padding:88px 0;position:relative;overflow:hidden;}
+  :where(html:has(.lp-bpm)) .hero::after{content:"";position:absolute;inset:0;pointer-events:none;background-image:linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px),linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);background-size:32px 32px;mask-image:linear-gradient(to bottom, black, transparent 85%);}
+
+  :where(html:has(.lp-bpm)) .hero-inner{position:relative;}
+  :where(html:has(.lp-bpm)) .hero h1{font-size:clamp(30px,4.2vw,50px);line-height:1.16;}
+  :where(html:has(.lp-bpm)) .hero p.sub{max-width:740px;color:#fff;opacity:.82;font-size:19px;margin-top:22px;font-weight:400;}
+  :where(html:has(.lp-bpm)) .hero p.sub b{font-weight:700;}
+  :where(html:has(.lp-bpm)) .hero-ctas{display:flex;gap:14px;margin-top:36px;flex-wrap:wrap;}
+  :where(html:has(.lp-bpm)) .journey{margin-top:56px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;color:rgba(255,255,255,.5);font-size:13px;font-weight:600;}
+  :where(html:has(.lp-bpm)) .journey b{color:#fff;}
+  :where(html:has(.lp-bpm)) .journey .sep{color:var(--brand);}
+  :where(html:has(.lp-bpm)) .section-head{max-width:660px;margin-bottom:48px;}
+  :where(html:has(.lp-bpm)) .section-head .tag{color:var(--brand);font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;}
+  :where(html:has(.lp-bpm)) .section-head h2{font-size:clamp(26px,3vw,38px);margin-top:14px;}
+  :where(html:has(.lp-bpm)) .section-head p{color:var(--muted);margin-top:14px;font-size:16px;}
+  :where(html:has(.lp-bpm)) .scenarios{display:flex;flex-direction:column;gap:14px;}
+  :where(html:has(.lp-bpm)) .scenario-item{display:flex;gap:16px;align-items:flex-start;padding:22px 26px;border-radius:16px;border:0.83px solid var(--line);background:var(--panel);}
+  :where(html:has(.lp-bpm)) .scenario-item .mark{color:var(--brand);font-weight:700;font-size:15px;flex:none;}
+  :where(html:has(.lp-bpm)) .scenario-item p{margin:0;font-size:15.5px;color:#fff;}
+  :where(html:has(.lp-bpm)) .cta-inline{margin-top:36px;}
+  :where(html:has(.lp-bpm)) .proof{display:grid;grid-template-columns:.9fr 1.1fr;gap:48px;align-items:center;}
+  @media(max-width:820px){:where(html:has(.lp-bpm)) .proof{grid-template-columns:1fr;}}
+  :where(html:has(.lp-bpm)) .proof-stat{font-family:'Space Grotesk';font-size:88px;font-weight:700;color:var(--brand);line-height:1;}
+  :where(html:has(.lp-bpm)) .proof-stat-label{color:var(--muted);font-size:14px;margin-top:10px;}
+  :where(html:has(.lp-bpm)) .proof-quote{font-family:'Space Grotesk';font-size:28px;line-height:1.32;color:#fff;}
+  :where(html:has(.lp-bpm)) .proof-quote span{color:var(--brand);}
+  :where(html:has(.lp-bpm)) .solutions{display:flex;flex-direction:column;gap:20px;}
+  :where(html:has(.lp-bpm)) .solution{display:grid;grid-template-columns:64px 1.1fr 1fr;gap:32px;padding:36px;border-radius:var(--radius-card);border:0.83px solid var(--line);background:var(--panel);}
+  @media(max-width:820px){:where(html:has(.lp-bpm)) .solution{grid-template-columns:1fr;gap:16px;}}
+  :where(html:has(.lp-bpm)) .solution .num{font-family:'Space Grotesk';font-size:22px;color:var(--brand);font-weight:700;}
+  :where(html:has(.lp-bpm)) .solution .tag-pill{display:inline-block;font-size:12px;font-weight:600;color:var(--brand);background:var(--brand-tint);border:0.83px solid rgba(254,48,0,.38);border-radius:999px;padding:6px 14px;margin-bottom:14px;}
+  :where(html:has(.lp-bpm)) .solution h3{font-size:21px;margin-bottom:10px;}
+  :where(html:has(.lp-bpm)) .solution p.desc{color:var(--muted);font-size:15px;}
+  :where(html:has(.lp-bpm)) .gains-label{font-size:12px;color:rgba(255,255,255,.4);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;font-weight:600;}
+  :where(html:has(.lp-bpm)) .gains{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:10px;}
+  :where(html:has(.lp-bpm)) .gains li{font-size:14.5px;color:#fff;font-weight:600;display:flex;gap:10px;}
+  :where(html:has(.lp-bpm)) .gains li::before{content:"";width:6px;height:6px;background:var(--brand);border-radius:1px;margin-top:7px;flex:none;transform:rotate(45deg);}
+  /* Entregáveis */
+  :where(html:has(.lp-bpm)) .chips{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;}
+  @media(max-width:900px){:where(html:has(.lp-bpm)) .chips{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:520px){:where(html:has(.lp-bpm)) .chips{grid-template-columns:1fr;}}
+  :where(html:has(.lp-bpm)) .chip{border:0.83px solid var(--line);background:var(--panel);border-radius:14px;padding:16px 18px;font-size:14.5px;font-weight:600;color:#fff;display:flex;align-items:center;gap:8px;justify-content:center;text-align:center;}
+  :where(html:has(.lp-bpm)) .chip::before{content:"";width:6px;height:6px;background:var(--brand);border-radius:1px;transform:rotate(45deg);flex:none;}
+  /* Diferenciais */
+  :where(html:has(.lp-bpm)) .diff-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+  @media(max-width:900px){:where(html:has(.lp-bpm)) .diff-grid{grid-template-columns:repeat(2,1fr);}}
+  @media(max-width:520px){:where(html:has(.lp-bpm)) .diff-grid{grid-template-columns:1fr;}}
+  :where(html:has(.lp-bpm)) .diff-card{background:var(--panel);border:0.83px solid var(--line);border-radius:var(--radius-card);padding:34px;}
+  :where(html:has(.lp-bpm)) .diff-card .idx{font-family:'Space Grotesk';font-size:13px;color:var(--brand);font-weight:700;margin-bottom:16px;display:block;}
+  :where(html:has(.lp-bpm)) .diff-card h3{font-size:16.5px;margin-bottom:10px;}
+  :where(html:has(.lp-bpm)) .diff-card p{font-size:14px;color:var(--muted);}
+  :where(html:has(.lp-bpm)) .cta-banner{background:var(--panel);border:0.83px solid var(--line);text-align:center;padding:64px 24px;border-radius:var(--radius-card);}
+  :where(html:has(.lp-bpm)) .cta-banner h2{font-size:clamp(22px,3vw,30px);max-width:640px;margin:0 auto 28px;}
+  /* Como funciona - 12 passos em 2 colunas */
+  :where(html:has(.lp-bpm)) .steps-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 48px;}
+  @media(max-width:760px){:where(html:has(.lp-bpm)) .steps-grid{grid-template-columns:1fr;}}
+  :where(html:has(.lp-bpm)) .step{display:flex;gap:20px;padding:22px 0;border-bottom:1px solid var(--line);}
+  :where(html:has(.lp-bpm)) .step .snum{font-family:'Space Grotesk';color:var(--brand);font-size:13px;font-weight:700;min-width:26px;}
+  :where(html:has(.lp-bpm)) .step h3{font-size:15.5px;margin-bottom:5px;}
+  :where(html:has(.lp-bpm)) .step p{color:var(--muted);font-size:13.5px;margin:0;line-height:1.5;}
+  :where(html:has(.lp-bpm)) .cta-box{display:grid;grid-template-columns:.9fr 1.1fr;gap:54px;align-items:start;border-radius:var(--radius-card);background:var(--panel);color:#fff;padding:48px;border:0.83px solid var(--line);position:relative;overflow:hidden;}
+  :where(html:has(.lp-bpm)) .cta-box .section-head{max-width:none;margin-bottom:0;}
+  :where(html:has(.lp-bpm)) .form{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;position:relative;z-index:1}
+  :where(html:has(.lp-bpm)) .field{display:flex;flex-direction:column;gap:8px}
+  :where(html:has(.lp-bpm)) .field.full{grid-column:1/-1}
+  :where(html:has(.lp-bpm)) .cta-box label{font-size:10.5px;text-transform:uppercase;letter-spacing:.16em;font-weight:700;color:rgba(255,255,255,.6)}
+  :where(html:has(.lp-bpm)) .cta-box input,:where(html:has(.lp-bpm)) .cta-box textarea,:where(html:has(.lp-bpm)) .cta-box select{width:100%;min-height:50px;border-radius:14px;border:0.83px solid var(--line);background:rgba(255,255,255,.06);color:#fff;padding:14px 16px;outline:none;font-family:'Inter';font-size:14.5px}
+  :where(html:has(.lp-bpm)) .cta-box select option{color:#050505;background:#fff}
+  :where(html:has(.lp-bpm)) .cta-box textarea{min-height:120px;resize:vertical}
+  :where(html:has(.lp-bpm)) .cta-box input:focus,:where(html:has(.lp-bpm)) .cta-box textarea:focus,:where(html:has(.lp-bpm)) .cta-box select:focus{border-color:var(--brand);box-shadow:0 0 0 4px rgba(254,48,0,.14)}
+  :where(html:has(.lp-bpm)) .form-status{grid-column:1/-1;margin:0;color:rgba(255,255,255,.72);font-size:13px}
+  @media(max-width:900px){:where(html:has(.lp-bpm)) .cta-box{grid-template-columns:1fr;padding:32px 24px}}
+  @media(min-width:1281px){
+    :where(html:has(.lp-bpm)) #contato .cta-box{grid-template-columns:1.1fr .9fr}
+    :where(html:has(.lp-bpm)) #contato .cta-box>div:first-child{order:2}
+    :where(html:has(.lp-bpm)) #contato .cta-box>form{order:1}
+  }
+  :where(html:has(.lp-bpm)) details{border-bottom:1px solid var(--line);padding:20px 0;}
+  :where(html:has(.lp-bpm)) details summary{cursor:pointer;font-weight:600;font-size:15.5px;list-style:none;display:flex;justify-content:space-between;align-items:center;}
+  :where(html:has(.lp-bpm)) details summary::-webkit-details-marker{display:none;}
+  :where(html:has(.lp-bpm)) details summary::after{content:"+";color:var(--brand);font-size:20px;font-family:'Space Grotesk';}
+  :where(html:has(.lp-bpm)) details[open] summary::after{content:"–";}
+  :where(html:has(.lp-bpm)) details p{color:var(--muted);margin-top:14px;font-size:14.5px;max-width:720px;}
+  :where(html:has(.lp-bpm)) footer{background:var(--ink);border-top:1px solid var(--line);padding:56px 24px 28px;font-size:14px;}
+  :where(html:has(.lp-bpm)) .footer-grid{display:flex;justify-content:space-between;flex-wrap:wrap;gap:32px;padding-bottom:32px;border-bottom:1px solid var(--line);}
+  :where(html:has(.lp-bpm)) .footer-grid img{height:28px;margin-bottom:8px;}
+  :where(html:has(.lp-bpm)) .footer-grid h4{color:#fff;font-size:12.5px;margin-bottom:14px;text-transform:uppercase;letter-spacing:.05em;}
+  :where(html:has(.lp-bpm)) .footer-grid a{display:block;margin-bottom:8px;color:rgba(255,255,255,.65);}
+  :where(html:has(.lp-bpm)) .footer-grid a:hover{color:#fff;}
+  :where(html:has(.lp-bpm)) .footer-bottom{padding-top:20px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;color:rgba(255,255,255,.4);font-size:12.5px;}

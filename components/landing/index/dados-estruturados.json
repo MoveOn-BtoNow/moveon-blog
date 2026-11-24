@@ -1,0 +1,18 @@
+{
+  "@context": "https://schema.org",
+  "@type": "ProfessionalService",
+  "name": "MOVE.ON Consulting",
+  "description": "Consultoria especializada em Business Transformation, PMO estratégico, SAP S/4HANA, Reforma Tributária, governança de programas e centros de excelência SAP.",
+  "url": "https://moveon.consulting",
+  "areaServed": "BR",
+  "sameAs": [
+    "https://www.linkedin.com/company/moveonbto/",
+    "https://www.instagram.com/moveonconsulting_/"
+  ],
+  "serviceType": [
+    "PMO Estratégico",
+    "Reforma Tributária no S/4HANA",
+    "Centro de Excelência SAP",
+    "Business Transformation Office"
+  ]
+}

@@ -1,0 +1,52 @@
+/*
+ * Rodapé do site no blog, com o mesmo visual do rodapé da landing page.
+ * As classes usam o prefixo "rod-site" e os seletores começam por "footer.rod-site"
+ * para vencer as regras genéricas de "footer" do CSS do blog.
+ */
+footer.rod-site {
+  display: block;
+  gap: 0;
+  text-align: left;
+  background: #050505;
+  color: #fff;
+  padding: 64px 0 32px;
+  font-family: Inter, Arial, sans-serif;
+  font-size: 16px;
+  line-height: 1.62;
+}
+footer.rod-site div { display: block; gap: 0; justify-content: normal; }
+footer.rod-site img { filter: none; margin: 0; }
+
+footer.rod-site .rod-site-interno { width: min(1180px, calc(100% - 40px)); margin-inline: auto; }
+footer.rod-site .rod-site-grade { display: grid; grid-template-columns: 1.6fr .75fr .9fr; gap: 38px; }
+footer.rod-site .rod-site-logo { display: inline-flex; margin-top: 0; }
+footer.rod-site .rod-site-logo img { display: block; width: auto; height: 58px; object-fit: contain; }
+footer.rod-site .rod-site-grade strong { display: block; color: #fff; font-weight: 700; }
+footer.rod-site .rod-site-grade a,
+footer.rod-site .rod-site-base { color: rgba(255, 255, 255, .62); }
+footer.rod-site .rod-site-grade a { display: block; margin-top: 10px; font-size: 14px; text-decoration: none; }
+footer.rod-site .rod-site-grade a:hover,
+footer.rod-site .rod-site-base a:hover { color: #fe3000; }
+footer.rod-site .rod-site-redes { display: flex; align-items: center; gap: 16px; margin-top: 14px; }
+footer.rod-site .rod-site-grade .rod-site-rede { display: inline-grid; margin-top: 0; place-items: center; width: 22px; height: 22px; }
+footer.rod-site .rod-site-rede svg { width: 18px; height: 18px; }
+footer.rod-site .rod-site-base {
+  border-top: 1px solid rgba(255, 255, 255, .1);
+  margin-top: 44px;
+  padding-top: 22px;
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  font-size: 12px;
+}
+footer.rod-site .rod-site-base a { color: inherit; }
+
+@media (max-width: 1280px) {
+  footer.rod-site .rod-site-grade { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 720px) {
+  footer.rod-site .rod-site-interno { width: min(100% - 32px, 1180px); }
+  footer.rod-site .rod-site-grade { grid-template-columns: 1fr; }
+  footer.rod-site .rod-site-logo img { height: 46px; }
+  footer.rod-site .rod-site-base { flex-direction: column; }
+}
