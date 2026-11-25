@@ -1,7 +1,9 @@
 import "./inicio.css";
 import RaizLanding from "@/layout/RaizLanding";
+import CabecalhoSite from "@/layout/CabecalhoSite";
+import RodapeSite from "@/layout/RodapeSite";
+import { links, chamadaCabecalho } from "./constants/navegacao";
 import GoogleTagManager from "@/components/GoogleTagManager";
-import Cabecalho from "./components/Cabecalho";
 import SecaoInicio from "./components/SecaoInicio";
 import SecaoLogoStrip from "./components/SecaoLogoStrip";
 import SecaoProblema from "./components/SecaoProblema";
@@ -12,7 +14,6 @@ import SecaoLideranca from "./components/SecaoLideranca";
 import SecaoCases from "./components/SecaoCases";
 import SecaoParceiros from "./components/SecaoParceiros";
 import SecaoContato from "./components/SecaoContato";
-import Rodape from "./components/Rodape";
 import DadosEstruturados from "@/components/DadosEstruturados";
 import dadosEstruturados from "./constants/dados-estruturados.json";
 
@@ -21,8 +22,10 @@ export default function TelaInicio() {
     <RaizLanding pagina="index">
       <GoogleTagManager />
       <DadosEstruturados dados={dadosEstruturados} />
-      <a className="skip-link" href="#conteudo">Pular para o conteúdo</a>
-      <Cabecalho />
+      <a className="skip-link" href="#conteudo">
+        Pular para o conteúdo
+      </a>
+      <CabecalhoSite links={links} chamada={chamadaCabecalho} comEspaco={false} />
       <main id="conteudo">
         <SecaoInicio />
         <SecaoLogoStrip />
@@ -35,7 +38,7 @@ export default function TelaInicio() {
         <SecaoParceiros />
         <SecaoContato />
       </main>
-      <Rodape />
+      <RodapeSite />
     </RaizLanding>
   );
 }

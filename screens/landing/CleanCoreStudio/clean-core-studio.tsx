@@ -1,6 +1,8 @@
 import "./clean-core-studio.css";
 import RaizLanding from "@/layout/RaizLanding";
-import Cabecalho from "./components/Cabecalho";
+import CabecalhoSite from "@/layout/CabecalhoSite";
+import RodapeSite from "@/layout/RodapeSite";
+import { links, chamadaCabecalho } from "./constants/navegacao";
 import SecaoHero from "./components/SecaoHero";
 import SecaoODesafio from "./components/SecaoODesafio";
 import SecaoComoFunciona from "./components/SecaoComoFunciona";
@@ -10,12 +12,11 @@ import SecaoTendencia from "./components/SecaoTendencia";
 import SecaoResultados from "./components/SecaoResultados";
 import SecaoPorQueMoveon from "./components/SecaoPorQueMoveon";
 import SecaoCleanCoreNao from "./components/SecaoCleanCoreNao";
-import Rodape from "./components/Rodape";
 
 export default function TelaCleanCoreStudio() {
   return (
     <RaizLanding pagina="clean-core-studio">
-      <Cabecalho />
+      <CabecalhoSite links={links} chamada={chamadaCabecalho} />
       <SecaoHero />
       <SecaoODesafio />
       <SecaoComoFunciona />
@@ -25,7 +26,7 @@ export default function TelaCleanCoreStudio() {
       <SecaoResultados />
       <SecaoPorQueMoveon />
       <SecaoCleanCoreNao />
-      <Rodape />
+      <RodapeSite />
     </RaizLanding>
   );
 }

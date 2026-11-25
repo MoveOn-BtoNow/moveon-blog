@@ -9,16 +9,18 @@ O site institucional (antigo repositório `MOVEON-LANDING-PAGE`) e o blog rodam 
 - `app/(landing)/`: página inicial em `/` e as soluções em `/pmo`, `/tax`, `/coe-sap`, `/clean-core-studio`, `/bpm`, `/blueprint`, `/4s4-governance` e `/4s4-operate`.
 - `app/(blog)/`: o blog, com a home em `/blog` e as demais páginas (`/admin`, `/publicacao/...`, `/sobre` etc.) nos mesmos endereços de antes.
 
-Estrutura das landing pages (o código do blog continua em `app/(blog)/`):
+Estrutura das landing pages (o código do blog continua em `app/(blog)/`). Cada componente fica na sua própria pasta (`Nome/Nome.tsx` + `index.ts`, e o CSS dele quando houver):
 
 - `app/(landing)/<rota>/page.tsx`: só a rota e os metadados (SEO); chama a tela correspondente.
-- `screens/landing/<Tela>/`: a tela de verdade. Cada uma tem o arquivo principal (`pmo.tsx`, por exemplo), o CSS dela (`pmo.css`, escopado pela classe `.lp-<pagina>`), `components/` com as seções usadas só por essa tela e `constants/` com os dados (formulário, FAQ, conteúdo e dados estruturados).
+- `screens/landing/<Tela>/`: a tela de verdade. Tem o arquivo principal (`pmo.tsx`, por exemplo), o CSS dela (`pmo.css`, escopado pela classe `.lp-<pagina>`), `components/` com as seções que só essa tela usa e `constants/` com o conteúdo (textos, menu, formulário, FAQ e dados estruturados).
 - `components/`: componentes reutilizáveis entre telas (formulário de lead, FAQ, selo do hero, animação de rede, Google Tag Manager).
-- `layout/`: estrutura comum a todo o site (cabeçalho, rodapé, menu e o elemento raiz das landing pages). O blog também usa o cabeçalho e o rodapé daqui.
+- `components/secoes/`: seções compartilhadas, montadas a partir do conteúdo de cada tela:
+  - páginas de solução (BPM, Blueprint, 4s4.Governance e 4s4.Operate): `SecaoHeroSolucao`, `Jornada`, `SecaoCenarios`, `SecaoComparativo`, `SecaoSolucoes`, `SecaoDiferenciais`, `SecaoChamadaBanner`, `SecaoComoFunciona`, `SecaoContato`, `SecaoFaq` e `CabecalhoSecao`;
+  - PMO, Tax e COE SAP: `SecaoChamadaFaixa`, `SecaoContatoEspecialista` e `SecaoFaqAcordeao`.
+- `layout/`: estrutura comum a todo o site (cabeçalho, rodapé, menus e o elemento raiz das landing pages). O blog também usa o cabeçalho e o rodapé daqui.
 - `hooks/`: comportamentos reutilizáveis (menu, revelar ao rolar, contadores, carrossel, formulário, animação).
 - `services/lead.service.ts`: envio de leads pelo FormSubmit, com o e-mail do visitante como alternativa.
 - `interfaces/`: tipos e contratos dos dados.
-- `styles/`: CSS dos componentes compartilhados (cabeçalho, rodapé e selo).
 - `public/landing/`: imagens das landing pages.
 
 ## Instalação automática no Ubuntu Server

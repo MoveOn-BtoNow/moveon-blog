@@ -1,17 +1,19 @@
 import "./coe-sap.css";
 import RaizLanding from "@/layout/RaizLanding";
+import CabecalhoSite from "@/layout/CabecalhoSite";
+import RodapeSite from "@/layout/RodapeSite";
+import SecaoChamadaFaixa from "@/components/secoes/SecaoChamadaFaixa";
+import SecaoContatoEspecialista from "@/components/secoes/SecaoContatoEspecialista";
+import SecaoFaqAcordeao from "@/components/secoes/SecaoFaqAcordeao";
+import { links, chamadaCabecalho } from "./constants/navegacao";
+import { chamadaQuerEntenderComo, chamadaSuaEmpresaPrecisa, contato } from "./constants/conteudo-secoes";
+import { perguntasFrequentes, formularioLead } from "./constants/dados";
 import GoogleTagManager from "@/components/GoogleTagManager";
-import Cabecalho from "./components/Cabecalho";
 import SecaoInicio from "./components/SecaoInicio";
 import SecaoOQueE from "./components/SecaoOQueE";
-import SecaoChamadaQuerEntenderComo from "./components/SecaoChamadaQuerEntenderComo";
 import SecaoServicos from "./components/SecaoServicos";
 import SecaoDiferenciais from "./components/SecaoDiferenciais";
-import SecaoChamadaSuaEmpresaPrecisa from "./components/SecaoChamadaSuaEmpresaPrecisa";
 import SecaoComoComeca from "./components/SecaoComoComeca";
-import SecaoContato from "./components/SecaoContato";
-import SecaoFaq from "./components/SecaoFaq";
-import Rodape from "./components/Rodape";
 import RedeAnimada from "@/components/RedeAnimada";
 import DadosEstruturados from "@/components/DadosEstruturados";
 import dadosEstruturados from "./constants/dados-estruturados.json";
@@ -22,20 +24,22 @@ export default function TelaCoeSap() {
       <GoogleTagManager />
       <DadosEstruturados dados={dadosEstruturados} />
       <RedeAnimada className="page-net" />
-      <a className="skip-link" href="#conteudo">Pular para o conteúdo</a>
-      <Cabecalho />
+      <a className="skip-link" href="#conteudo">
+        Pular para o conteúdo
+      </a>
+      <CabecalhoSite links={links} chamada={chamadaCabecalho} comEspaco={false} />
       <main id="conteudo">
         <SecaoInicio />
         <SecaoOQueE />
-        <SecaoChamadaQuerEntenderComo />
+        <SecaoChamadaFaixa {...chamadaQuerEntenderComo} />
         <SecaoServicos />
         <SecaoDiferenciais />
-        <SecaoChamadaSuaEmpresaPrecisa />
+        <SecaoChamadaFaixa {...chamadaSuaEmpresaPrecisa} solida comGrade />
         <SecaoComoComeca />
-        <SecaoContato />
-        <SecaoFaq />
+        <SecaoContatoEspecialista {...contato} formulario={formularioLead} comRede />
+        <SecaoFaqAcordeao perguntas={perguntasFrequentes} />
       </main>
-      <Rodape />
+      <RodapeSite />
     </RaizLanding>
   );
 }
